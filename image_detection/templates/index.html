@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Farmer</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f9f4; text-align: center; margin: 0; }
+        header { background: #2e7d32; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .container { padding: 20px; max-width: 450px; margin: auto; }
+        .btn-upload { border: 2px dashed #2e7d32; background: #e8f5e9; padding: 40px 20px; border-radius: 15px; width: 100%; cursor: pointer; font-size: 18px; font-weight: bold; }
+        #analyze-btn { background: #ff9800; color: white; border: none; padding: 15px; width: 100%; border-radius: 30px; margin-top: 20px; font-size: 18px; display: none; }
+        #result-card { background: white; padding: 20px; border-radius: 15px; margin-top: 20px; display: none; text-align: left; border-top: 5px solid #2e7d32; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #2e7d32; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <header>
+        <span id="ui-head">🌱 Smart Farmer</span>
+        <select id="lang" onchange="updateUI()" style="padding: 5px; border-radius: 10px;">
+            <option value="en">English</option>
+            <option value="te">తెలుగు</option>
+            <option value="hi">हिंदी</option>
+            <option value="mr">मराठी</option>
+        </select>
+    </header>
+
+    <div class="container">
+        <h2 id="ui-title">Crop Doctor</h2>
+        <div style="position: relative;">
+            <button class="btn-upload" id="ui-btn">📸 Tap to Scan Leaf</button>
+            <input type="file" id="inp" accept="image/*" capture="environment" onchange="pre()" style="position:absolute; left:0; top:0; opacity:0; width:100%; height:100%;">
+        </div>
+        <img id="pv" style="width:100%; border-radius:15px; margin-top:15px; display:none;">
+        <button id="analyze-btn" onclick="run()">🔍 Analyze</button>
+        <div class="loader" id="ld"></div>
+
+        <div id="result-card">
+            <h3 id="res-name" style="margin-top:0;"></h3>
+            <p><strong>💊 <span id="ui-med">Medicine</span>:</strong> <span id="res-med"></span></p>
+            <p><strong>📋 <span id="ui-plan">Plan</span>:</strong> <span id="res-plan"></span></p>
+            <hr><div id="res-brk" style="font-family: monospace; font-size: 14px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const ui = {
+            en: {head:"🌱 Smart Farmer", title:"Crop Doctor", btn:"📸 Tap to Scan Leaf", anz:"🔍 Analyze", med:"Medicine", plan:"Plan"},
+            te: {head:"🌱 స్మార్ట్ రైతు", title:"పంట వైద్యుడు", btn:"📸 ఆకును స్కాన్ చేయండి", anz:"🔍 విశ్లేషించండి", med:"మందులు", plan:"ప్రణాళిక"},
+            hi: {head:"🌱 स्मार्ट किसान", title:"फसल डॉक्टर", btn:"📸 स्कैन करें", anz:"🔍 विश्लेषण करें", med:"दवा", plan:"योजना"},
+            mr: {head:"🌱 स्मार्ट शेतकरी", title:"पीक डॉक्टर", btn:"📸 स्कॅन करा", anz:"🔍 विश्लेषण करा", med:"औषध", plan:"कृती योजना"}
+        };
+
+        function updateUI() {
+            const l = document.getElementById('lang').value;
+            document.getElementById('ui-head').innerText = ui[l].head;
+            document.getElementById('ui-title').innerText = ui[l].title;
+            document.getElementById('ui-btn').innerText = ui[l].btn;
+            document.getElementById('analyze-btn').innerText = ui[l].anz;
+            document.getElementById('ui-med').innerText = ui[l].med;
+            document.getElementById('ui-plan').innerText = ui[l].plan;
+            if(document.getElementById('result-card').style.display === 'block') run();
+        }
+
+        function pre() {
+            const f = document.getElementById('inp').files[0];
+            const reader = new FileReader();
+            reader.onload = e => { 
+                document.getElementById('pv').src = e.target.result; 
+                document.getElementById('pv').style.display = 'block';
+                document.getElementById('analyze-btn').style.display = 'block';
+            };
+            reader.readAsDataURL(f);
+        }
+
+        function run() {
+            const f = document.getElementById('inp').files[0];
+            const l = document.getElementById('lang').value;
+            document.getElementById('ld').style.display = 'block';
+            document.getElementById('analyze-btn').style.display = 'none';
+            
+            const fd = new FormData();
+            fd.append('file', f);
+            fd.append('language', l);
+
+            fetch('/api/predict', {method:'POST', body:fd})
+            .then(r => r.json())
+            .then(d => {
+                document.getElementById('ld').style.display = 'none';
+                document.getElementById('analyze-btn').style.display = 'block';
+                const card = document.getElementById('result-card');
+                document.getElementById('res-name').innerText = d.diagnosis.name;
+                document.getElementById('res-name').style.color = d.is_healthy ? "#2e7d32" : "#d32f2f";
+                document.getElementById('res-med').innerText = d.diagnosis.med;
+                document.getElementById('res-plan').innerText = d.diagnosis.plan;
+                
+                let b = "";
+                d.all_scores.forEach(s => { b += `<div>${s.name}: ${s.conf}%</div>`; });
+                document.getElementById('res-brk').innerHTML = b;
+                card.style.display = 'block';
+                card.style.borderTopColor = d.is_healthy ? "#2e7d32" : "#d32f2f";
+            });
+        }
+    </script>
+</body>
+</html>

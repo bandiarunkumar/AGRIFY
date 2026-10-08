@@ -1,0 +1,6 @@
+Flask==3.0.3
+Flask-Cors==4.0.1
+tensorflow
+numpy
+Werkzeug==3.0.3
+gunicorn==20.1.0
