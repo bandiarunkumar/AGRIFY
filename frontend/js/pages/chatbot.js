@@ -1,5 +1,5 @@
 // ============================================================
-// AGRIFY AI — Premium ChatGPT-Style Chatbot
+// AGRIFY AI — Farmer Copilot Chat Experience
 // Voice input, Camera, File upload, Markdown, Full power
 // ============================================================
 
@@ -78,6 +78,7 @@ export function renderChatbot() {
   return `
   <div class="page-section chatbot-page">
     <div class="chatbot-fullscreen">
+
       <!-- Header -->
       <div class="chatbot-header">
         <div class="chatbot-header-left">
