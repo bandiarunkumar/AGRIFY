@@ -1,5 +1,5 @@
 // ============================================
-// Crop Doctor Page — Disease Detection
+// AGRIFY Crop Doctor — Vision AI Pathology Lab
 // Upload photo OR live camera scan
 // ============================================
 
@@ -77,15 +77,28 @@ const DISEASE_TREATMENT_DB = {
   },
 };
 
-
 export function renderCropDoctor() {
   return `
-    <div class="page-section">
-      <div class="page-header">
-        <h1>🔬 Crop Doctor</h1>
-        <p>Upload a leaf photo or use your camera for instant disease detection with detailed treatment guidance.</p>
+    <div class="page-section crop-doctor-page">
+      <!-- Crop Doctor Vision AI Hero Header -->
+      <div class="cd-hero-header">
+        <div class="cd-badge">
+          <span class="badge-dot"></span>
+          <span>AGRIFY VISION AI DIAGNOSTICS</span>
+        </div>
+        <h1 class="cd-title">🔬 Crop Doctor & Foliar Pathology</h1>
+        <p class="cd-subtitle">
+          Instant deep-learning leaf disease detection with chemical, biological, and preventive treatment protocols.
+        </p>
+        <div class="cd-trust-strip">
+          <span class="trust-pill"><span class="pill-icon">🧠</span> Deep Learning Vision Model</span>
+          <span class="trust-pill"><span class="pill-icon">📷</span> Field Macro & Live Camera Scan</span>
+          <span class="trust-pill"><span class="pill-icon">💊</span> Actionable Treatment Protocols</span>
+          <span class="trust-pill"><span class="pill-icon">👨‍🌾</span> Integrated Agronomist Escalation</span>
+        </div>
       </div>
 
+      <!-- Main Scanning Console Card -->
       <div class="card crop-doctor-card">
         <!-- Mode Selector -->
         <div class="cd-mode-selector">
@@ -99,9 +112,11 @@ export function renderCropDoctor() {
 
         <!-- Upload Zone -->
         <div class="upload-zone" id="upload-zone">
-          <div class="upload-icon">📸</div>
+          <div class="upload-icon-wrapper">
+            <span class="upload-icon">📸</span>
+          </div>
           <div class="upload-text">Click or drag a leaf photo here</div>
-          <div class="upload-hint">JPG, PNG — max 10MB</div>
+          <div class="upload-hint">JPG, PNG — auto-compressed for rapid AI analysis</div>
           <input type="file" id="leaf-input" accept="image/*" style="display:none;" />
         </div>
 
@@ -111,18 +126,23 @@ export function renderCropDoctor() {
             <video id="cd-video" autoplay playsinline class="cd-video"></video>
             <canvas id="cd-canvas" style="display:none;"></canvas>
             <div class="cd-camera-overlay">
-              <div class="cd-camera-frame"></div>
-              <div class="cd-camera-hint">Position the leaf inside the frame</div>
+              <div class="cd-camera-frame">
+                <div class="cd-hud-corner tl"></div>
+                <div class="cd-hud-corner tr"></div>
+                <div class="cd-hud-corner bl"></div>
+                <div class="cd-hud-corner br"></div>
+              </div>
+              <div class="cd-camera-hint">Position the infected leaf area inside the frame</div>
             </div>
           </div>
-          <div style="display:flex;gap:var(--sp-md);justify-content:center;margin-top:var(--sp-lg);">
+          <div style="display:flex;gap:var(--sp-md);justify-content:center;margin-top:var(--sp-lg);flex-wrap:wrap;">
             <button class="btn btn-accent btn-lg" id="cd-capture-btn">📸 Capture & Analyze</button>
             <button class="btn btn-secondary" id="cd-switch-cam-btn">🔄 Switch Camera</button>
           </div>
         </div>
 
         <!-- Preview -->
-        <img id="leaf-preview" class="cd-leaf-preview" style="display:none;" />
+        <img id="leaf-preview" class="cd-leaf-preview" style="display:none;" alt="Leaf Preview" />
 
         <!-- Actions after upload -->
         <div class="cd-actions" id="cd-actions" style="display:none;">
@@ -132,10 +152,20 @@ export function renderCropDoctor() {
 
         <!-- Loading -->
         <div id="cd-loader" style="display:none;">
-          <div class="loading-spinner">
-            <div class="spinner"></div>
-            <div class="loading-text">🔬 Analyzing leaf for disease patterns...</div>
-            <div class="loading-text" style="font-size:0.8rem;color:var(--c-text-muted);">Comparing against trained disease database</div>
+          <div class="card cd-loading-card">
+            <div class="loading-spinner-wrap">
+              <div class="spinner"></div>
+            </div>
+            <div class="loading-heading">Vision AI Analyzing Leaf</div>
+            <div class="loading-subheading">🔬 Scanning foliar tissue for disease patterns...</div>
+            <div class="loading-footnote">
+              Evaluating lesion pigmentation, necroses, and texture against trained plant pathology models.
+            </div>
+            <div class="loading-pills-row">
+              <span class="loading-pill active">🌿 Foliar Segmentation</span>
+              <span class="loading-pill active">🔍 Lesion Detection</span>
+              <span class="loading-pill">🧠 Pathology Matching</span>
+            </div>
           </div>
         </div>
 
@@ -146,27 +176,37 @@ export function renderCropDoctor() {
       </div>
 
       <!-- Info Card -->
-      <div class="card" style="margin-top:var(--sp-xl);">
-        <h3 class="section-title"><span class="icon">📋</span> Supported Crops & Diseases</h3>
+      <div class="card cd-info-card" style="margin-top:var(--sp-xl);">
+        <h3 class="section-title"><span class="icon">📋</span> Supported Crops & Diagnostic Pipeline</h3>
         <div class="grid-3" style="gap:var(--sp-md);">
-          <div class="stat-card">
+          <div class="stat-card cd-crop-stat">
             <div class="stat-icon green">🥔</div>
             <div class="stat-label">Potato</div>
-            <div style="font-size:0.8rem;color:var(--c-text-secondary);margin-top:4px;">Early Blight, Late Blight, Healthy detection</div>
+            <div style="font-size:0.8rem;color:var(--c-text-secondary);margin-top:4px;">
+              Early Blight, Late Blight, Healthy detection
+            </div>
+            <span class="cd-model-status live">● LIVE AI MODEL</span>
           </div>
-          <div class="stat-card">
+          <div class="stat-card cd-crop-stat">
             <div class="stat-icon amber">🍅</div>
-            <div class="stat-label">Tomato (Coming Soon)</div>
-            <div style="font-size:0.8rem;color:var(--c-text-muted);margin-top:4px;">Leaf curl, Mosaic virus, Septoria</div>
+            <div class="stat-label">Tomato</div>
+            <div style="font-size:0.8rem;color:var(--c-text-muted);margin-top:4px;">
+              Leaf curl, Mosaic virus, Septoria
+            </div>
+            <span class="cd-model-status coming">○ PIPELINE IN TRAINING</span>
           </div>
-          <div class="stat-card">
+          <div class="stat-card cd-crop-stat">
             <div class="stat-icon blue">🌶️</div>
-            <div class="stat-label">Chilli (Coming Soon)</div>
-            <div style="font-size:0.8rem;color:var(--c-text-muted);margin-top:4px;">Anthracnose, Powdery mildew, Leaf spot</div>
+            <div class="stat-label">Chilli</div>
+            <div style="font-size:0.8rem;color:var(--c-text-muted);margin-top:4px;">
+              Anthracnose, Powdery mildew, Leaf spot
+            </div>
+            <span class="cd-model-status coming">○ PIPELINE IN TRAINING</span>
           </div>
         </div>
-        <div style="margin-top:var(--sp-md);padding:var(--sp-md);background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:var(--r-md);font-size:0.82rem;color:var(--c-accent);">
-          💡 For best results, photograph a single leaf with clear visibility of spots/discoloration. Natural daylight works best.
+        <div class="cd-tip-box" style="margin-top:var(--sp-md);">
+          <span class="tip-icon">💡</span>
+          <span class="tip-text">For the highest diagnostic confidence, frame a single leaf flat against natural diffuse daylight, avoiding extreme glare or heavy shadows.</span>
         </div>
       </div>
     </div>
@@ -327,14 +367,12 @@ export function initCropDoctor() {
 
     if (data.is_recognized === false) {
       card.innerHTML = `
-        <div style="text-align:center;padding:var(--sp-2xl);background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r-xl);margin-bottom:var(--sp-xl);">
+        <div class="card cd-unrecognized-card" style="text-align:center;padding:var(--sp-2xl);margin-bottom:var(--sp-xl);">
           <div style="font-size:3.5rem;margin-bottom:var(--sp-md);">🤷</div>
-          <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:var(--c-text);margin-bottom:8px;">No Match Found</div>
-          <p style="color:var(--c-text-secondary);font-size:0.95rem;max-width:300px;margin:0 auto;">
-            The image was not recognized as a supported crop leaf (potato, etc.). Please ensure the photo clearly shows a single crop leaf in good lighting.
+          <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:var(--c-text);margin-bottom:8px;">No Supported Crop Match Found</div>
+          <p style="color:var(--c-text-secondary);font-size:0.95rem;max-width:440px;margin:0 auto var(--sp-lg);line-height:1.6;">
+            The uploaded image was not recognized as a supported crop leaf (potato, etc.). Please ensure the photo clearly captures a single crop leaf in natural lighting.
           </p>
-        </div>
-        <div style="text-align:center;">
           <button class="btn btn-secondary btn-lg" id="cd-scan-again">🔄 Try Again</button>
         </div>
       `;
@@ -351,20 +389,19 @@ export function initCropDoctor() {
     const details = DISEASE_TREATMENT_DB[diseaseName] || DISEASE_TREATMENT_DB['Healthy'];
     const sevColors = { low: 'var(--c-success)', medium: 'var(--c-accent)', high: '#ef4444' };
     const sevBg = { low: 'rgba(34,197,94,0.08)', medium: 'rgba(245,158,11,0.08)', high: 'rgba(239,68,68,0.08)' };
-    const sevBorder = { low: 'rgba(34,197,94,0.2)', medium: 'rgba(245,158,11,0.2)', high: 'rgba(239,68,68,0.3)' };
+    const sevBorder = { low: 'rgba(34,197,94,0.25)', medium: 'rgba(245,158,11,0.25)', high: 'rgba(239,68,68,0.3)' };
 
     let html = '';
 
     // ---- Fallback Mode Indicator ----
     if (data.analysis_mode === 'local_fallback') {
       html += `
-        <div style="padding:var(--sp-md);background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:var(--r-lg);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-md);">
-          <span style="font-size:1.3rem;flex-shrink:0;">🔌</span>
+        <div class="cd-offline-banner" style="margin-bottom:var(--sp-lg);">
+          <span class="offline-icon">🔌</span>
           <div>
-            <div style="font-weight:700;font-size:0.88rem;color:#93c5fd;margin-bottom:4px;">Offline Analysis Mode</div>
-            <div style="font-size:0.8rem;color:var(--c-text-secondary);line-height:1.6;">
-              The AI server is currently sleeping (free tier). This result uses local image color analysis as a quick estimate.
-              For full AI-powered diagnosis, try again in 1–2 minutes — the server is waking up in the background.
+            <div class="offline-title">Local Fallback Analysis Mode</div>
+            <div class="offline-desc">
+              The neural vision server is initializing. This result uses local leaf pigmentation heuristic analysis as a preliminary estimate. Full AI deep-learning model will activate shortly.
             </div>
           </div>
         </div>
@@ -373,25 +410,28 @@ export function initCropDoctor() {
 
     // ---- Diagnosis Header ----
     html += `
-      <div style="text-align:center;padding:var(--sp-xl);background:${sevBg[details.severity]};border:1px solid ${sevBorder[details.severity]};border-radius:var(--r-xl);margin-bottom:var(--sp-xl);">
-        <div style="font-size:3rem;margin-bottom:var(--sp-sm);">${isHealthy ? '✅' : '⚠️'}</div>
-        <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:${sevColors[details.severity]};margin-bottom:4px;">${diseaseName}</div>
-        <div style="font-size:0.85rem;color:var(--c-text-secondary);">Severity: <strong style="color:${sevColors[details.severity]};">${details.severityLabel}</strong></div>
+      <div class="cd-diagnosis-hero" style="background:${sevBg[details.severity]};border:1px solid ${sevBorder[details.severity]};margin-bottom:var(--sp-xl);">
+        <div class="diagnosis-status-icon">${isHealthy ? '✅' : '⚠️'}</div>
+        <div class="diagnosis-disease-name" style="color:${sevColors[details.severity]};">${diseaseName}</div>
+        <div class="diagnosis-severity-wrap">
+          <span>Pathology Severity:</span>
+          <span class="severity-badge-pill" style="color:${sevColors[details.severity]};border-color:${sevColors[details.severity]};">${details.severityLabel}</span>
+        </div>
       </div>
     `;
 
     // ---- Confidence Scores ----
     html += `
-      <div class="card" style="margin-bottom:var(--sp-lg);padding:var(--sp-lg);">
-        <h3 class="section-title"><span class="icon">📊</span> Detection Confidence</h3>
-        <div style="display:flex;flex-direction:column;gap:var(--sp-sm);">
+      <div class="card cd-confidence-card" style="margin-bottom:var(--sp-lg);padding:var(--sp-lg);">
+        <h3 class="section-title"><span class="icon">📊</span> AI Detection Confidence</h3>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-sm);margin-top:var(--sp-sm);">
           ${scores.map((s, i) => `
-            <div style="display:flex;align-items:center;gap:var(--sp-md);">
-              <span style="min-width:120px;font-size:0.85rem;font-weight:${i === 0 ? '700' : '500'};color:${i === 0 ? 'var(--c-text)' : 'var(--c-text-muted)'};">${s.name}</span>
-              <div style="flex:1;height:10px;background:var(--c-surface-2);border-radius:var(--r-full);overflow:hidden;">
-                <div style="width:${s.conf}%;height:100%;border-radius:var(--r-full);background:${i === 0 ? (isHealthy ? 'var(--c-success)' : sevColors[details.severity]) : 'var(--c-text-muted)'};transition:width 0.8s ease;"></div>
+            <div class="confidence-row">
+              <span class="confidence-name ${i === 0 ? 'top' : ''}">${s.name}</span>
+              <div class="confidence-track">
+                <div class="confidence-fill" style="width:${s.conf}%;background:${i === 0 ? (isHealthy ? 'var(--c-success)' : sevColors[details.severity]) : 'var(--c-text-dim)'};"></div>
               </div>
-              <span style="min-width:50px;text-align:right;font-size:0.85rem;font-weight:700;color:${i === 0 ? sevColors[details.severity] : 'var(--c-text-muted)'};">${s.conf}%</span>
+              <span class="confidence-pct ${i === 0 ? 'top' : ''}" style="${i === 0 ? `color:${sevColors[details.severity]};` : ''}">${s.conf}%</span>
             </div>
           `).join('')}
         </div>
@@ -405,7 +445,7 @@ export function initCropDoctor() {
         <p style="font-size:0.9rem;color:var(--c-text-secondary);line-height:1.7;">${details.cause}</p>
         ${details.symptoms.length ? `
           <div style="margin-top:var(--sp-md);">
-            <div style="font-weight:700;font-size:0.85rem;margin-bottom:var(--sp-sm);color:var(--c-text);">Typical Symptoms:</div>
+            <div style="font-weight:700;font-size:0.85rem;margin-bottom:var(--sp-sm);color:var(--c-text);">Typical Field Symptoms:</div>
             <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;">
               ${details.symptoms.map(s => `
                 <li style="display:flex;gap:8px;font-size:0.83rem;color:var(--c-text-secondary);line-height:1.5;">
@@ -421,14 +461,14 @@ export function initCropDoctor() {
     // ---- Treatment Steps ----
     html += `
       <div class="card" style="margin-bottom:var(--sp-lg);padding:var(--sp-lg);">
-        <h3 class="section-title"><span class="icon">💊</span> Treatment Plan</h3>
-        <div style="display:flex;flex-direction:column;gap:var(--sp-md);">
+        <h3 class="section-title"><span class="icon">💊</span> Actionable Treatment Protocol</h3>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-md);margin-top:var(--sp-sm);">
           ${details.treatment.map((t, i) => `
-            <div style="display:flex;gap:var(--sp-md);padding:var(--sp-md);background:var(--c-surface);border-radius:var(--r-md);border-left:3px solid ${sevColors[details.severity]};">
-              <span style="font-weight:800;color:${sevColors[details.severity]};min-width:24px;font-size:1.1rem;">${i + 1}</span>
+            <div class="treatment-step-card" style="border-left:3px solid ${sevColors[details.severity]};">
+              <span class="step-num" style="color:${sevColors[details.severity]};">${i + 1}</span>
               <div>
-                <div style="font-weight:700;font-size:0.88rem;color:var(--c-text);margin-bottom:2px;">${t.step}</div>
-                <div style="font-size:0.82rem;color:var(--c-text-secondary);line-height:1.6;">${t.detail}</div>
+                <div class="step-title">${t.step}</div>
+                <div class="step-detail">${t.detail}</div>
               </div>
             </div>
           `).join('')}
@@ -439,8 +479,8 @@ export function initCropDoctor() {
     // ---- Prevention ----
     html += `
       <div class="card" style="margin-bottom:var(--sp-lg);padding:var(--sp-lg);">
-        <h3 class="section-title"><span class="icon">🛡️</span> Prevention for Next Season</h3>
-        <ul class="solution-list">
+        <h3 class="section-title"><span class="icon">🛡️</span> Cultural & Preventive Field Measures</h3>
+        <ul class="solution-list" style="margin-top:var(--sp-sm);">
           ${details.prevention.map(p => `<li>${p}</li>`).join('')}
         </ul>
       </div>
@@ -448,8 +488,8 @@ export function initCropDoctor() {
 
     // ---- Yield Impact ----
     html += `
-      <div style="padding:var(--sp-md);background:${sevBg[details.severity]};border:1px solid ${sevBorder[details.severity]};border-radius:var(--r-md);margin-bottom:var(--sp-xl);font-size:0.85rem;color:var(--c-text-secondary);line-height:1.6;">
-        📉 <strong>Expected Yield Impact:</strong> ${details.estimatedLoss}
+      <div class="yield-impact-banner" style="background:${sevBg[details.severity]};border:1px solid ${sevBorder[details.severity]};margin-bottom:var(--sp-xl);">
+        📉 <strong>Projected Yield Impact:</strong> ${details.estimatedLoss}
       </div>
     `;
 

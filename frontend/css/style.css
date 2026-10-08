@@ -5450,6 +5450,613 @@ input[type=number] { -moz-appearance: textfield; }
   }
 }
 
+/* ============================================================
+   CROP DOCTOR — AGRIFY Vision AI Pathology Lab
+   All rules scoped to .crop-doctor-page to avoid regressions
+   ============================================================ */
 
+/* ---- Hero Header ---- */
+.crop-doctor-page .cd-hero-header {
+  text-align: center;
+  padding: var(--sp-2xl) var(--sp-lg) var(--sp-xl);
+  position: relative;
+}
 
+.crop-doctor-page .cd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: var(--r-full);
+  padding: 5px 14px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: var(--c-primary-light);
+  text-transform: uppercase;
+  margin-bottom: var(--sp-md);
+}
+
+.crop-doctor-page .cd-badge .badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-primary);
+  box-shadow: 0 0 8px var(--c-primary);
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+.crop-doctor-page .cd-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  font-weight: 900;
+  color: var(--c-text);
+  margin: 0 0 var(--sp-sm);
+  line-height: 1.15;
+}
+
+.crop-doctor-page .cd-subtitle {
+  font-size: 1rem;
+  color: var(--c-text-secondary);
+  max-width: 560px;
+  margin: 0 auto var(--sp-lg);
+  line-height: 1.65;
+}
+
+.crop-doctor-page .cd-trust-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-sm);
+  justify-content: center;
+}
+
+.crop-doctor-page .trust-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--glass-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-full);
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  color: var(--c-text-secondary);
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+}
+
+.crop-doctor-page .trust-pill .pill-icon {
+  font-size: 0.85rem;
+}
+
+/* ---- Main Card ---- */
+.crop-doctor-page .crop-doctor-card {
+  padding: var(--sp-xl);
+  border: 1px solid var(--c-border-strong);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+}
+
+/* ---- Mode Selector ---- */
+.crop-doctor-page .cd-mode-selector {
+  display: flex;
+  gap: var(--sp-sm);
+  background: rgba(6, 19, 13, 0.5);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  padding: 5px;
+  margin-bottom: var(--sp-xl);
+  width: fit-content;
+}
+
+.crop-doctor-page .cd-mode-btn {
+  background: transparent;
+  border: none;
+  border-radius: var(--r-md);
+  padding: 8px 20px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.crop-doctor-page .cd-mode-btn:hover {
+  color: var(--c-text);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.crop-doctor-page .cd-mode-btn.active {
+  background: var(--c-primary);
+  color: var(--c-bg-deep);
+  font-weight: 700;
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.35);
+}
+
+/* ---- Upload Zone ---- */
+.crop-doctor-page .upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-sm);
+  min-height: 220px;
+  border: 2px dashed var(--c-border-strong);
+  border-radius: var(--r-xl);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  background: rgba(16, 185, 129, 0.03);
+  padding: var(--sp-2xl) var(--sp-lg);
+  text-align: center;
+}
+
+.crop-doctor-page .upload-zone:hover,
+.crop-doctor-page .upload-zone.drag-over {
+  border-color: var(--c-primary);
+  background: rgba(16, 185, 129, 0.07);
+}
+
+.crop-doctor-page .upload-icon-wrapper {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1.5px solid rgba(52, 211, 153, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: var(--sp-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.crop-doctor-page .upload-zone:hover .upload-icon-wrapper {
+  transform: scale(1.06);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
+}
+
+.crop-doctor-page .upload-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.crop-doctor-page .upload-hint {
+  font-size: 0.82rem;
+  color: var(--c-text-muted);
+}
+
+/* ---- Camera Zone ---- */
+.crop-doctor-page .cd-camera-container {
+  position: relative;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: #000;
+  max-height: 380px;
+}
+
+.crop-doctor-page .cd-video {
+  width: 100%;
+  display: block;
+  border-radius: var(--r-xl);
+  max-height: 380px;
+  object-fit: cover;
+}
+
+.crop-doctor-page .cd-camera-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.crop-doctor-page .cd-camera-frame {
+  position: relative;
+  width: 220px;
+  height: 220px;
+}
+
+.crop-doctor-page .cd-hud-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: var(--c-primary);
+  border-style: solid;
+}
+
+.crop-doctor-page .cd-hud-corner.tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.crop-doctor-page .cd-hud-corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.crop-doctor-page .cd-hud-corner.bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.crop-doctor-page .cd-hud-corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+.crop-doctor-page .cd-camera-hint {
+  margin-top: var(--sp-md);
+  background: rgba(6, 19, 13, 0.7);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: var(--r-full);
+  padding: 5px 16px;
+  font-size: 0.78rem;
+  color: var(--c-primary-light);
+  backdrop-filter: blur(6px);
+}
+
+/* ---- Leaf Preview ---- */
+.crop-doctor-page .cd-leaf-preview {
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--c-border-strong);
+  margin-bottom: var(--sp-lg);
+  background: rgba(6, 19, 13, 0.4);
+}
+
+/* ---- Actions Row ---- */
+.crop-doctor-page .cd-actions {
+  display: flex;
+  gap: var(--sp-md);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--sp-lg);
+}
+
+/* ---- Loading Card ---- */
+.crop-doctor-page .cd-loading-card {
+  text-align: center;
+  padding: var(--sp-2xl);
+  border: 1px solid var(--c-border-strong);
+  background: var(--glass-bg);
+  border-radius: var(--r-xl);
+  margin-top: var(--sp-xl);
+}
+
+.crop-doctor-page .loading-spinner-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--sp-lg);
+}
+
+.crop-doctor-page .spinner {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 4px solid rgba(16, 185, 129, 0.15);
+  border-top-color: var(--c-primary);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.crop-doctor-page .loading-heading {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--c-text);
+  margin-bottom: var(--sp-xs);
+}
+
+.crop-doctor-page .loading-subheading {
+  font-size: 0.9rem;
+  color: var(--c-primary-light);
+  margin-bottom: var(--sp-sm);
+}
+
+.crop-doctor-page .loading-footnote {
+  font-size: 0.8rem;
+  color: var(--c-text-muted);
+  max-width: 400px;
+  margin: 0 auto var(--sp-lg);
+  line-height: 1.6;
+}
+
+.crop-doctor-page .loading-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-xs);
+  justify-content: center;
+}
+
+.crop-doctor-page .loading-pill {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--r-full);
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-muted);
+  transition: all 0.3s ease;
+}
+
+.crop-doctor-page .loading-pill.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(52, 211, 153, 0.4);
+  color: var(--c-primary-light);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+/* ---- Diagnosis Hero ---- */
+.crop-doctor-page .cd-diagnosis-hero {
+  border-radius: var(--r-xl);
+  padding: var(--sp-xl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-sm);
+  margin-top: var(--sp-xl);
+}
+
+.crop-doctor-page .diagnosis-status-icon {
+  font-size: 2.8rem;
+  line-height: 1;
+}
+
+.crop-doctor-page .diagnosis-disease-name {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.crop-doctor-page .diagnosis-severity-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  font-size: 0.85rem;
+  color: var(--c-text-secondary);
+}
+
+.crop-doctor-page .severity-badge-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid;
+  border-radius: var(--r-full);
+  padding: 3px 12px;
+}
+
+/* ---- Confidence Bars ---- */
+.crop-doctor-page .cd-confidence-card {
+  border: 1px solid var(--c-border-strong);
+  background: var(--glass-bg);
+  border-radius: var(--r-xl);
+}
+
+.crop-doctor-page .confidence-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.crop-doctor-page .confidence-name {
+  font-size: 0.82rem;
+  color: var(--c-text-secondary);
+  min-width: 110px;
+  flex-shrink: 0;
+}
+
+.crop-doctor-page .confidence-name.top {
+  color: var(--c-text);
+  font-weight: 700;
+}
+
+.crop-doctor-page .confidence-track {
+  flex: 1;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+
+.crop-doctor-page .confidence-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width 0.6s ease;
+}
+
+.crop-doctor-page .confidence-pct {
+  font-size: 0.8rem;
+  color: var(--c-text-muted);
+  min-width: 42px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.crop-doctor-page .confidence-pct.top {
+  font-weight: 700;
+}
+
+/* ---- Treatment Steps ---- */
+.crop-doctor-page .treatment-step-card {
+  display: flex;
+  gap: var(--sp-md);
+  align-items: flex-start;
+  background: rgba(6, 19, 13, 0.35);
+  border-radius: var(--r-lg);
+  padding: var(--sp-md) var(--sp-lg);
+}
+
+.crop-doctor-page .step-num {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.crop-doctor-page .step-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--c-text);
+  margin-bottom: 4px;
+}
+
+.crop-doctor-page .step-detail {
+  font-size: 0.83rem;
+  color: var(--c-text-secondary);
+  line-height: 1.6;
+}
+
+/* ---- Yield Impact Banner ---- */
+.crop-doctor-page .yield-impact-banner {
+  border-radius: var(--r-xl);
+  padding: var(--sp-lg) var(--sp-xl);
+  font-size: 0.9rem;
+  color: var(--c-text-secondary);
+  line-height: 1.65;
+}
+
+.crop-doctor-page .yield-impact-banner strong {
+  color: var(--c-text);
+}
+
+/* ---- Offline / Fallback Banner ---- */
+.crop-doctor-page .cd-offline-banner {
+  display: flex;
+  gap: var(--sp-md);
+  align-items: flex-start;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--r-lg);
+  padding: var(--sp-md) var(--sp-lg);
+}
+
+.crop-doctor-page .offline-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.crop-doctor-page .offline-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--c-accent);
+  margin-bottom: 4px;
+}
+
+.crop-doctor-page .offline-desc {
+  font-size: 0.8rem;
+  color: var(--c-text-secondary);
+  line-height: 1.6;
+}
+
+/* ---- Unrecognized Card ---- */
+.crop-doctor-page .cd-unrecognized-card {
+  border: 1px solid var(--c-border-strong);
+  background: var(--glass-bg);
+}
+
+/* ---- Info Card & Crop Stats ---- */
+.crop-doctor-page .cd-info-card {
+  border: 1px solid var(--c-border-strong);
+  background: var(--glass-bg);
+}
+
+.crop-doctor-page .cd-crop-stat {
+  border: 1px solid var(--c-border-strong);
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  padding: var(--sp-lg);
+}
+
+.crop-doctor-page .cd-model-status {
+  display: inline-block;
+  margin-top: var(--sp-sm);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+}
+
+.crop-doctor-page .cd-model-status.live {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: var(--c-primary-light);
+  animation: pulse-glow 2s infinite;
+}
+
+.crop-doctor-page .cd-model-status.coming {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-muted);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+  50% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+}
+
+/* ---- Tip Box ---- */
+.crop-doctor-page .cd-tip-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-sm);
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: var(--r-lg);
+  padding: var(--sp-md) var(--sp-lg);
+}
+
+.crop-doctor-page .tip-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.crop-doctor-page .tip-text {
+  font-size: 0.82rem;
+  color: var(--c-text-secondary);
+  line-height: 1.65;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .crop-doctor-page .cd-hero-header {
+    padding: var(--sp-xl) var(--sp-md) var(--sp-lg);
+  }
+
+  .crop-doctor-page .crop-doctor-card {
+    padding: var(--sp-lg) var(--sp-md);
+  }
+
+  .crop-doctor-page .cd-mode-selector {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .crop-doctor-page .cd-mode-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .crop-doctor-page .diagnosis-disease-name {
+    font-size: 1.45rem;
+  }
+
+  .crop-doctor-page .confidence-name {
+    min-width: 80px;
+    font-size: 0.75rem;
+  }
+
+  .crop-doctor-page .treatment-step-card {
+    padding: var(--sp-sm) var(--sp-md);
+  }
+
+  .crop-doctor-page .step-num {
+    font-size: 1.2rem;
+  }
+}
 
