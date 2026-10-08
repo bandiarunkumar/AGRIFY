@@ -1,6 +1,6 @@
 // ============================================================
 // Charts Utility — Professional Data Visualization Engine
-// Uses Chart.js with Agri-Connect's dark green theme
+// Uses Chart.js with AGRIFY's dark green theme
 // ============================================================
 
 const CHART_COLORS = {

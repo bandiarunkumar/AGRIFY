@@ -1,5 +1,5 @@
 // ============================================================
-// Agri-Connect i18n — English + Telugu Full Translation
+// AGRIFY i18n — English + Telugu Full Translation
 // ============================================================
 
 let lang = 'en';

@@ -50,10 +50,10 @@ export function renderFooter() {
       <div class="footer-bottom">
         <div class="footer-brand">
           <span class="footer-logo">🌾</span>
-          <span class="footer-brand-name">Agri<span class="green">Connect</span></span>
+          <span class="footer-brand-name">AGRI<span class="green">FY</span></span>
         </div>
         <div class="footer-copy">
-          © ${new Date().getFullYear()} AgriConnect — ${lang === 'te' ? 'భారతీయ రైతుల కోసం నిర్మించబడింది' : 'Built for Indian Farmers'} 🇮🇳
+          © ${new Date().getFullYear()} AGRIFY — ${lang === 'te' ? 'భారతీయ రైతుల కోసం నిర్మించబడింది' : 'Built for Indian Farmers'} 🇮🇳
         </div>
       </div>
     </div>

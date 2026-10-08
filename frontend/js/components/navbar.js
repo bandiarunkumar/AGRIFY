@@ -36,7 +36,7 @@ export function renderNavbar(activePage, routes) {
     <div class="nav-inner">
       <div class="nav-logo" data-navigate="home">
         <div class="nav-logo-icon">🌾</div>
-        <div class="nav-logo-text">Agri<span>Connect</span></div>
+        <div class="nav-logo-text">AGRI<span>FY</span></div>
       </div>
       <div class="nav-links">
         ${navLinks}

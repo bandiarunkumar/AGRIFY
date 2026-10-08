@@ -1,5 +1,5 @@
 // ============================================================
-// Agri-Connect v3.0 — Main Application Router
+// AGRIFY v3.0 — Main Application Router
 // ============================================================
 
 import '../css/style.css';

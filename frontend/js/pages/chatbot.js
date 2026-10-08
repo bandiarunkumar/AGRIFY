@@ -1,5 +1,5 @@
 // ============================================================
-// AgriConnect AI — Premium ChatGPT-Style Chatbot
+// AGRIFY AI — Premium ChatGPT-Style Chatbot
 // Voice input, Camera, File upload, Markdown, Full power
 // ============================================================
 
@@ -13,8 +13,8 @@ let mediaRecorder = null;
 let recognition = null;
 
 const BOT_GREETINGS = {
-  en: "🌾 **Namaste! I'm AgriConnect** — your intelligent farming companion.\n\nI can help you with:\n• 🌱 Crop recommendations & management\n• 💊 Disease diagnosis & treatment\n• 🧪 Fertilizer & soil advice\n• 💰 Market prices & government schemes\n• 🌤️ Weather-based farming tips\n• 📚 **Any question** — ask me anything!\n\nAsk me anything in **English** or **Telugu**. I'm here to help! 🚀",
-  te: "🌾 **నమస్కారం! నేను AgriConnect** — మీ తెలివైన వ్యవసాయ సహాయకుడిని.\n\nనేను మీకు సహాయం చేయగలను:\n• 🌱 పంట సిఫారసులు & నిర్వహణ\n• 💊 వ్యాధి నిర్ధారణ & చికిత్స\n• 🧪 ఎరువులు & నేల సలహా\n• 💰 మార్కెట్ ధరలు & ప్రభుత్వ పథకాలు\n• 🌤️ వాతావరణ ఆధారిత వ్యవసాయ చిట్కాలు\n• 📚 **ఏదైనా ప్రశ్న** — ఏదైనా అడగండి!\n\n**ఇంగ్లీష్** లేదా **తెలుగు**లో ఏదైనా అడగండి. నేను సహాయం చేయడానికి ఇక్కడ ఉన్నాను! 🚀"
+  en: "🌾 **Namaste! I'm AGRIFY** — your intelligent farming companion.\n\nI can help you with:\n• 🌱 Crop recommendations & management\n• 💊 Disease diagnosis & treatment\n• 🧪 Fertilizer & soil advice\n• 💰 Market prices & government schemes\n• 🌤️ Weather-based farming tips\n• 📚 **Any question** — ask me anything!\n\nAsk me anything in **English** or **Telugu**. I'm here to help! 🚀",
+  te: "🌾 **నమస్కారం! నేను AGRIFY** — మీ తెలివైన వ్యవసాయ సహాయకుడిని.\n\nనేను మీకు సహాయం చేయగలను:\n• 🌱 పంట సిఫారసులు & నిర్వహణ\n• 💊 వ్యాధి నిర్ధారణ & చికిత్స\n• 🧪 ఎరువులు & నేల సలహా\n• 💰 మార్కెట్ ధరలు & ప్రభుత్వ పథకాలు\n• 🌤️ వాతావరణ ఆధారిత వ్యవసాయ చిట్కాలు\n• 📚 **ఏదైనా ప్రశ్న** — ఏదైనా అడగండి!\n\n**ఇంగ్లీష్** లేదా **తెలుగు**లో ఏదైనా అడగండి. నేను సహాయం చేయడానికి ఇక్కడ ఉన్నాను! 🚀"
 };
 
 const QUICK_QUESTIONS = {
@@ -86,7 +86,7 @@ export function renderChatbot() {
             <span class="chatbot-status-dot"></span>
           </div>
           <div>
-            <div class="chatbot-header-name">AgriConnect</div>
+            <div class="chatbot-header-name">AGRIFY</div>
             <div class="chatbot-header-status"><span class="status-pulse"></span> Powered by Gemini · Always Online</div>
           </div>
         </div>
@@ -102,7 +102,7 @@ export function renderChatbot() {
         <div class="chat-welcome-card">
           <div class="welcome-glow"></div>
           <div class="welcome-icon">🌾</div>
-          <div class="welcome-title">AgriConnect</div>
+          <div class="welcome-title">AGRIFY</div>
           <div class="welcome-subtitle">Your intelligent farming companion — ask me anything!</div>
           <div class="welcome-chips" id="welcome-chips">
             ${(QUICK_QUESTIONS[currentLang]||QUICK_QUESTIONS.en).map(q=>`<button class="welcome-chip" data-question="${q.replace(/^[^\s]+\s/,'')}">${q}</button>`).join('')}
@@ -143,7 +143,7 @@ export function renderChatbot() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
-        <div class="chatbot-input-hint">AgriConnect can make mistakes. Verify important farming advice with local experts.</div>
+        <div class="chatbot-input-hint">AGRIFY can make mistakes. Verify important farming advice with local experts.</div>
       </div>
     </div>
   </div>`;
@@ -381,7 +381,7 @@ function appendTyping() {
     <div class="chat-bubble-content">
       <div class="typing-indicator">
         <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
-        <span class="typing-label">AgriConnect is thinking...</span>
+        <span class="typing-label">AGRIFY is thinking...</span>
       </div>
     </div>`;
   container.appendChild(el);

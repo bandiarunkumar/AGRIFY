@@ -37,7 +37,7 @@ export function renderHome() {
         <!-- Scramble Title -->
         <div class="cinema-title-stage" id="cinema-title-stage">
           <div class="cinema-scramble-line" data-final="AGRI" id="scramble-word-1"></div>
-          <div class="cinema-scramble-line cinema-green-word" data-final="CONNECT" id="scramble-word-2"></div>
+          <div class="cinema-scramble-line cinema-green-word" data-final="FY" id="scramble-word-2"></div>
         </div>
 
         <!-- Tagline -->
