@@ -8,6 +8,7 @@ import json
 import hashlib
 from datetime import datetime, timezone
 
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -308,6 +309,41 @@ def health():
         "database": "connected" if USE_DB else "disabled (no DATABASE_URL)",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
+
+
+# ============================================================
+# TRANSLATION (server-side credential handling)
+# ============================================================
+@app.route("/api/translate", methods=["POST"])
+def translate_text():
+    """Translate text with a server-side Google API key when configured."""
+    data = request.get_json(silent=True) or {}
+    text = data.get("q", "")
+    target = data.get("target", "")
+
+    if not isinstance(text, str) or not text.strip():
+        return jsonify({"error": "Text is required"}), 400
+    if len(text) > 5000:
+        return jsonify({"error": "Text must be 5000 characters or fewer"}), 400
+    if not isinstance(target, str) or not target.isalpha() or not 2 <= len(target) <= 3:
+        return jsonify({"error": "A valid target language is required"}), 400
+
+    api_key = os.getenv("GOOGLE_TRANSLATE_API_KEY")
+    if not api_key:
+        return jsonify({"error": "Translation service is not configured"}), 503
+
+    try:
+        response = requests.post(
+            "https://translation.googleapis.com/language/translate/v2",
+            params={"key": api_key},
+            json={"q": text, "target": target.lower()},
+            timeout=10,
+        )
+        response.raise_for_status()
+        translated = response.json()["data"]["translations"][0]["translatedText"]
+        return jsonify({"translatedText": translated})
+    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
+        return jsonify({"error": "Translation service is temporarily unavailable"}), 502
 
 
 # ============================================================

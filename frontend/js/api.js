@@ -323,8 +323,8 @@ export function getCurrentPosition() {
   });
 }
 
-// ---- Google Translate Helper ----
-export const GOOGLE_TRANSLATE_API_KEY = 'REDACTED_GOOGLE_API_KEY';
+// ---- Translation Helper ----
+// Translation requests are routed through the API so credentials never reach the browser.
 const translationCache = new Map();
 
 export async function translateDynamicText(text, targetLang) {
@@ -337,18 +337,13 @@ export async function translateDynamicText(text, targetLang) {
   }
 
   try {
-    const url = `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_TRANSLATE_API_KEY}`;
-    const res = await fetch(url, {
+    const data = await apiFetch('/api/translate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ q: text, target: targetLang })
     });
-    
-    // Fallback if API fails
-    if (!res.ok) return text;
-    
-    const data = await res.json();
-    const translated = data.data.translations[0].translatedText;
+
+    const translated = data.translatedText;
+    if (!translated) return text;
     
     // Cache it to avoid repeated identical API calls
     translationCache.set(cacheKey, translated);
