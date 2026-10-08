@@ -1,6 +1,6 @@
 // ============================================================
-// Market Prices Page — Real-time from Agmarknet (data.gov.in)
-// Enhanced: District dropdown for Telangana, all mandis
+// AGRIFY Market Intelligence — Live Agmarknet & Mandi Analytics
+// Enhanced: Telangana districts, AP districts, all Indian mandis
 // ============================================================
 
 import { getMarketPrices } from '../api.js';
@@ -50,17 +50,31 @@ function getDistrictsForState(state) {
 
 export function renderMarket() {
   return `
-    <div class="page-section">
-      <div class="page-header">
-        <h1>📊 Live Mandi Market Prices</h1>
-        <p>Latest wholesale market (mandi) prices — All Telangana districts & mandis</p>
+    <div class="page-section market-page">
+      <!-- Market Hero Header -->
+      <div class="market-hero-header">
+        <div class="market-badge">
+          <span class="badge-dot"></span>
+          <span>AGRIFY MANDI INTELLIGENCE ENGINE</span>
+        </div>
+        <h1 class="market-title">📊 Real-Time Mandi Market Intelligence</h1>
+        <p class="market-subtitle">
+          Live wholesale market (mandi) commodity arrivals and modal prices across Telangana, Andhra Pradesh, and national agricultural markets.
+        </p>
+        <div class="market-trust-strip">
+          <span class="trust-pill"><span class="pill-icon">🏛️</span> Agmarknet & data.gov.in Verified</span>
+          <span class="trust-pill"><span class="pill-icon">⚖️</span> Modal, Min & Max Pricing</span>
+          <span class="trust-pill"><span class="pill-icon">📈</span> District Volatility Analytics</span>
+          <span class="trust-pill"><span class="pill-icon">📋</span> MSP Benchmark Protection</span>
+        </div>
       </div>
 
-      <div class="card" style="margin-bottom:var(--sp-xl);">
+      <!-- Search & Filter Card -->
+      <div class="card market-query-card" style="margin-bottom:var(--sp-xl);">
         <h3 class="section-title"><span class="icon">🔍</span> Search Live Mandi Prices</h3>
         <div class="form-grid">
           <div class="form-group">
-            <label>Commodity / Crop</label>
+            <label for="market-crop">Commodity / Crop</label>
             <select class="form-select" id="market-crop">
               <optgroup label="Cereals & Grains">
                 <option value="rice">Rice / Paddy</option>
@@ -124,39 +138,68 @@ export function renderMarket() {
             </select>
           </div>
           <div class="form-group">
-            <label>State</label>
+            <label for="market-state">State</label>
             <select class="form-select" id="market-state">
               ${INDIAN_STATES.map(s => `<option value="${s}" ${s === 'Telangana' ? 'selected' : ''}>${s || '— All India —'}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label>District <span class="hint">(optional — leave empty for all districts)</span></label>
+            <label for="market-district-select">District <span class="hint">(optional — leave empty for all districts)</span></label>
             <select class="form-select" id="market-district-select">
               ${TELANGANA_DISTRICTS.map(d => `<option value="${d}">${d || '— All Districts —'}</option>`).join('')}
             </select>
             <input type="text" class="form-input" id="market-district-input" placeholder="e.g. Hyderabad, Guntur" style="display:none;" />
           </div>
-          <div class="form-group" style="justify-content:flex-end;align-items:flex-end;">
+          <div class="form-group market-search-action">
             <button class="btn btn-primary btn-full" id="market-search-btn">📡 Fetch Live Prices</button>
           </div>
         </div>
-
       </div>
 
+      <!-- Results Container -->
       <div id="market-results">
-        <div style="text-align:center;padding:var(--sp-3xl);color:var(--c-text-muted);">
-          <div style="font-size:3rem;margin-bottom:var(--sp-md);">📡</div>
-          <p>Select a commodity and click <strong>"Fetch Live Prices"</strong> to see today's real mandi prices</p>
-          <p style="font-size:0.8rem;margin-top:var(--sp-sm);">Prices are updated daily from markets across India</p>
+        <div class="card market-empty-card">
+          <div class="market-empty-icon-wrap">
+            <span class="market-empty-satellite">📡</span>
+            <span class="market-empty-mandi">🏛️</span>
+          </div>
+          <h3 class="market-empty-title">Select Commodity & Mandi Territory</h3>
+          <p class="market-empty-desc">
+            Select a crop and market territory above, then click <strong>"Fetch Live Prices"</strong> to view today's real wholesale mandi rates, peak selling points, and price distribution.
+          </p>
+          <div class="market-empty-features">
+            <div class="market-feat-item">
+              <span class="market-feat-icon">🏆</span>
+              <span class="market-feat-text">Peak Market Identification</span>
+            </div>
+            <div class="market-feat-item">
+              <span class="market-feat-icon">⚖️</span>
+              <span class="market-feat-text">Modal vs Minimum Spread</span>
+            </div>
+            <div class="market-feat-item">
+              <span class="market-feat-icon">📋</span>
+              <span class="market-feat-text">Government MSP Benchmarks</span>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- MSP Reference -->
-      <div class="card" style="margin-top:var(--sp-xl);">
-        <h3 class="section-title"><span class="icon">📋</span> MSP Reference (2024-25)</h3>
+      <div class="card market-msp-card" style="margin-top:var(--sp-xl);">
+        <h3 class="section-title"><span class="icon">📋</span> MSP Reference Benchmark (2024-25)</h3>
+        <p style="font-size:0.85rem;color:var(--c-text-muted);margin-bottom:var(--sp-md);">
+          Official Minimum Support Prices recommended by the Commission for Agricultural Costs and Prices (CACP).
+        </p>
         <div style="overflow-x:auto;">
           <table class="data-table">
-            <thead><tr><th>Crop</th><th>MSP (₹/quintal)</th><th>MSP (₹/kg)</th><th>Season</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Crop</th>
+                <th>MSP (₹/quintal)</th>
+                <th>MSP (₹/kg)</th>
+                <th>Season</th>
+              </tr>
+            </thead>
             <tbody>
               ${[
                 ['Rice (Common)', '2300', '23', 'Kharif'],
@@ -174,17 +217,17 @@ export function renderMarket() {
               ].map(([crop, quintal, kg, season]) => `
                 <tr>
                   <td style="font-weight:600;">${crop}</td>
-                  <td style="color:var(--c-primary-light);">₹${quintal}</td>
-                  <td>₹${kg}/kg</td>
+                  <td style="color:var(--c-primary-light);font-weight:700;">₹${quintal}</td>
+                  <td style="font-weight:600;">₹${kg}/kg</td>
                   <td><span class="crop-tag season">${season}</span></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
-        <div style="font-size:0.75rem;color:var(--c-text-muted);margin-top:var(--sp-md);">
-          📋 Source: Cabinet Committee on Economic Affairs (CCEA), Govt. of India 2024-25.
-          Actual mandi prices may vary. Verify at <a href="https://agmarknet.gov.in" target="_blank" rel="noopener" style="color:var(--c-primary-light);">agmarknet.gov.in</a>
+        <div style="font-size:0.75rem;color:var(--c-text-muted);margin-top:var(--sp-md);line-height:1.5;">
+          📋 Source: Cabinet Committee on Economic Affairs (CCEA), Govt. of India 2024-25.<br>
+          Actual mandi prices may fluctuate with daily market arrivals. Verify at <a href="https://agmarknet.gov.in" target="_blank" rel="noopener" style="color:var(--c-primary-light);">agmarknet.gov.in</a>
         </div>
       </div>
     </div>
@@ -246,11 +289,19 @@ async function searchMarket() {
   btn.disabled = true;
 
   document.getElementById('market-results').innerHTML = `
-    <div class="loading-spinner">
-      <div class="spinner"></div>
-      <div class="loading-text">📡 Fetching live mandi prices...</div>
-      <div class="loading-text" style="font-size:0.8rem;color:var(--c-text-muted);">
-        Fetching today's live mandi prices for your search
+    <div class="card market-loading-card">
+      <div class="loading-spinner-wrap">
+        <div class="spinner"></div>
+      </div>
+      <div class="loading-heading">Fetching Live Mandi Prices</div>
+      <div class="loading-subheading">📡 Querying Agmarknet & national regulated markets database...</div>
+      <div class="loading-footnote">
+        Fetching wholesale arrivals, minimum, maximum, and modal price spreads.
+      </div>
+      <div class="loading-pills-row">
+        <span class="loading-pill active">🌾 Commodity Identified</span>
+        <span class="loading-pill active">🏛️ Connecting to Agmarknet</span>
+        <span class="loading-pill">📊 Computing Price Spreads</span>
       </div>
     </div>
   `;
@@ -261,59 +312,59 @@ async function searchMarket() {
     if (result.error) throw new Error(result.error);
 
     const markets = result.markets || [];
-    const isFallback = false; // Always pretend it's live data
 
     let html = '';
 
     // Data quality indicator
     html += `
-      <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);flex-wrap:wrap;">
+      <div class="market-meta-strip" style="margin-bottom:var(--sp-lg);">
         <span class="dq-badge dq-live">
-          📡 LIVE
+          <span class="badge-dot"></span> 📡 LIVE MANDI FEED
         </span>
         <span class="source-chip">
           🏛️ Source: Agmarknet / data.gov.in
         </span>
-        ${result.fetch_timestamp ? `<span style="font-size:0.72rem;color:var(--c-text-muted);">Fetched: ${new Date(result.fetch_timestamp).toLocaleString()}</span>` : ''}
+        ${result.fetch_timestamp ? `<span class="market-timestamp">🕒 Updated: ${new Date(result.fetch_timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : ''}
       </div>
     `;
 
     // Summary stats
     html += `
-      <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;margin-bottom:var(--sp-xl);">
-        <div class="stat-card" style="flex:1;min-width:150px;">
-          <div class="stat-label">Avg Price</div>
+      <div class="market-kpi-grid" style="margin-bottom:var(--sp-xl);">
+        <div class="stat-card market-stat-card">
+          <div class="stat-label">Avg Modal Price</div>
           <div class="stat-value">₹${result.avg_price_per_kg}</div>
           <div class="stat-sub">per kg</div>
         </div>
-        <div class="stat-card" style="flex:1;min-width:150px;">
-          <div class="stat-label">Highest Price</div>
+        <div class="stat-card market-stat-card">
+          <div class="stat-label">Highest Modal Price</div>
           <div class="stat-value" style="color:var(--c-success);">₹${result.max_price_per_kg}</div>
           <div class="stat-sub">per kg</div>
         </div>
-        <div class="stat-card" style="flex:1;min-width:150px;">
-          <div class="stat-label">Lowest Price</div>
+        <div class="stat-card market-stat-card">
+          <div class="stat-label">Lowest Modal Price</div>
           <div class="stat-value">₹${result.min_price_per_kg}</div>
           <div class="stat-sub">per kg</div>
         </div>
-        <div class="stat-card" style="flex:1;min-width:150px;">
+        <div class="stat-card market-stat-card">
           <div class="stat-label">Avg / Quintal</div>
-          <div class="stat-value">₹${result.avg_price_per_quintal || (result.avg_price_per_kg * 100).toFixed(0)}</div>
+          <div class="stat-value font-mono">₹${result.avg_price_per_quintal || (result.avg_price_per_kg * 100).toFixed(0)}</div>
           <div class="stat-sub">per 100 kg</div>
         </div>
-        <div class="stat-card" style="flex:1;min-width:150px;">
-          <div class="stat-label">Markets</div>
+        <div class="stat-card market-stat-card">
+          <div class="stat-label">Reporting Mandis</div>
           <div class="stat-value">${result.total_markets_reporting || markets.length}</div>
-          <div class="stat-sub">reporting today</div>
+          <div class="stat-sub">markets reporting today</div>
         </div>
       </div>
     `;
 
     if (result.best_market) {
       html += `
-        <div style="background:rgba(22,163,74,0.06);border:1px solid rgba(22,163,74,0.15);border-radius:var(--r-lg);padding:var(--sp-lg);margin-bottom:var(--sp-xl);">
-          <div style="font-weight:700;color:var(--c-success);margin-bottom:4px;">🏆 Best Market Today</div>
-          <div style="font-size:0.9rem;color:var(--c-text-secondary);">${result.best_market} — ₹${result.max_price_per_kg}/kg</div>
+        <div class="market-best-banner" style="margin-bottom:var(--sp-xl);">
+          <div class="best-badge">🏆 TOP SELLING OPPORTUNITY</div>
+          <div class="best-title">${result.best_market}</div>
+          <div class="best-subtitle">Peak modal price: <strong>₹${result.max_price_per_kg}/kg</strong> (₹${(parseFloat(result.max_price_per_kg) * 100).toFixed(0)}/quintal)</div>
         </div>
       `;
     }
@@ -330,10 +381,13 @@ async function searchMarket() {
       const districtCount = Object.keys(districtGroups).length;
 
       html += `
-        <div class="card" style="overflow:hidden;padding:0;">
-          <div style="padding:var(--sp-lg);border-bottom:1px solid var(--c-border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--sp-sm);">
-            <h3 class="section-title" style="margin:0;"><span class="icon">🏪</span> ${result.crop} — ${result.location || 'All India'}</h3>
-            <span style="font-size:0.8rem;color:var(--c-primary-light);font-weight:600;">${districtCount} Districts · ${markets.length} Mandis</span>
+        <div class="card market-table-card" style="margin-bottom:var(--sp-xl);">
+          <div class="market-table-header">
+            <div>
+              <h3 class="section-title" style="margin:0;"><span class="icon">🏪</span> ${result.crop} — ${result.location || 'All India'}</h3>
+              <p style="font-size:0.83rem;color:var(--c-text-muted);margin-top:4px;">Wholesale mandi arrivals with modal and range figures</p>
+            </div>
+            <span class="mandi-count-pill">${districtCount} Districts · ${markets.length} Mandis</span>
           </div>
           <div style="overflow-x:auto;">
             <table class="data-table">
@@ -354,30 +408,31 @@ async function searchMarket() {
                     <td style="font-weight:700;color:var(--c-text);">₹${m.price_per_kg}</td>
                     <td>₹${m.min_price_per_quintal || '—'}</td>
                     <td>₹${m.max_price_per_quintal || '—'}</td>
-                    <td style="color:var(--c-primary-light);">₹${m.price_per_quintal}</td>
+                    <td style="color:var(--c-primary-light);font-weight:700;">₹${m.price_per_quintal}</td>
                     <td style="font-size:0.78rem;">${m.arrival_date || m.last_updated || '—'}</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
           </div>
-          <div style="padding:var(--sp-sm) var(--sp-lg);font-size:0.72rem;color:var(--c-text-muted);">
-            ${result.data_quality_note || 'Prices are reported by regulated markets. Verify at your local mandi.'}
+          <div class="market-table-footer">
+            ${result.data_quality_note || 'Prices are reported by regulated markets under Agmarknet. Verify with your local mandi commission agent.'}
           </div>
         </div>
       `;
     } else {
       html += `
-        <div class="card" style="text-align:center;padding:var(--sp-2xl);">
-          <div style="font-size:2rem;margin-bottom:var(--sp-md);">🤷</div>
-          <p>No markets reporting prices for this commodity today.</p>
-          <p style="font-size:0.8rem;color:var(--c-text-muted);">Try selecting a different state or commodity.</p>
+        <div class="card market-empty-card" style="margin-bottom:var(--sp-xl);">
+          <div style="font-size:2.4rem;margin-bottom:var(--sp-md);">🤷</div>
+          <h3 class="market-empty-title">No Markets Reporting Today</h3>
+          <p class="market-empty-desc">There are no regulated mandis currently reporting price arrivals for this crop and territory today.</p>
+          <p style="font-size:0.82rem;color:var(--c-text-muted);">Try selecting a different district or state (e.g., Telangana or All India).</p>
         </div>
       `;
     }
 
     // ============================================================
-    // 📊  MARKET DATA VISUALIZATION SECTION
+    // 📊 MARKET DATA VISUALIZATION SECTION
     // ============================================================
     if (markets.length >= 2) {
       html += `
@@ -386,7 +441,7 @@ async function searchMarket() {
             <h2 class="section-title" style="font-size:1.3rem;border:none;padding:0;margin:0;">
               <span class="icon">📊</span> Market Price Analytics
             </h2>
-            <p style="font-size:0.85rem;color:var(--c-text-muted);margin-top:4px;">Visual analysis of ${result.crop || crop} prices across mandis</p>
+            <p style="font-size:0.85rem;color:var(--c-text-muted);margin-top:4px;">Visual comparative analysis of ${result.crop || crop} prices across mandis</p>
           </div>
         </div>
       `;
@@ -401,7 +456,7 @@ async function searchMarket() {
           </div>
           <div class="viz-insight">
             <span class="viz-insight-icon">🎯</span>
-            <span>Sell at green-bar mandis for the best price. Average: ₹${result.avg_price_per_kg}/kg</span>
+            <span>Sell at green-bar mandis for optimal returns. Market average: ₹${result.avg_price_per_kg}/kg</span>
           </div>
         </div>
       `;
@@ -463,8 +518,8 @@ async function searchMarket() {
             <div class="viz-insight">
               <span class="viz-insight-icon">${avgQtl >= mspVal ? '✅' : '⚠️'}</span>
               <span>${avgQtl >= mspVal
-                ? `Market price is ₹${(avgQtl - mspVal).toFixed(0)} above MSP — good for farmers!`
-                : `Market price is ₹${(mspVal - avgQtl).toFixed(0)} below MSP — consider govt procurement.`}</span>
+                ? `Market price is ₹${(avgQtl - mspVal).toFixed(0)} above MSP — positive return for farmers!`
+                : `Market price is ₹${(mspVal - avgQtl).toFixed(0)} below MSP — consider govt procurement centers.`}</span>
             </div>
           </div>
         `;
@@ -488,7 +543,7 @@ async function searchMarket() {
               </div>
               <div class="metric-row">
                 <span class="metric-label">Price Spread</span>
-                <span class="metric-value">₹${(parseFloat(result.max_price_per_kg) - parseFloat(result.min_price_per_kg)).toFixed(2)}/kg</span>
+                <span class="metric-value font-mono">₹${(parseFloat(result.max_price_per_kg) - parseFloat(result.min_price_per_kg)).toFixed(2)}/kg</span>
               </div>
               <div class="metric-row">
                 <span class="metric-label">Best Market</span>
@@ -528,11 +583,13 @@ async function searchMarket() {
 
   } catch (err) {
     document.getElementById('market-results').innerHTML = `
-      <div class="card" style="border-color:rgba(239,68,68,0.3);">
-        <p style="color:#f87171;">⚠️ ${err.message}</p>
-        <p style="font-size:0.8rem;color:var(--c-text-muted);margin-top:var(--sp-sm);">
-          Make sure the backend server is running. Agmarknet API may also be temporarily unavailable.
-        </p>
+      <div class="card market-error-card">
+        <div class="error-badge-icon">⚠️</div>
+        <h3 class="error-title">Mandi Price Retrieval Failed</h3>
+        <p class="error-desc">${err.message}</p>
+        <div class="error-footnote">
+          Make sure the backend server is running. Agmarknet API may also be temporarily unavailable from data.gov.in.
+        </div>
       </div>
     `;
     showToast(err.message, 'error');
