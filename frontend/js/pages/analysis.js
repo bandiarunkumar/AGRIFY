@@ -1,5 +1,5 @@
 // ============================================================
-// Farm Analysis Page — GPS-first, Full Analysis
+// AGRIFY Farm Intelligence Analyzer — Precision Planning Workflow
 // ============================================================
 
 import { analyzeFarm, getSoilByCoords, getWeatherByCoords, predictCrop, predictFertilizer, getSoilAnalysis, getCurrentPosition, reverseGeocode } from '../api.js';
@@ -23,14 +23,27 @@ export function renderAnalysis() {
   farmData = {};
 
   return `
-    <div class="page-section">
-      <div class="page-header">
-        <h1>🌱 Farm Intelligence Analyzer</h1>
-        <p>Accurate crop and fertilizer recommendations using live GPS, satellite soil data, and weather</p>
+    <div class="page-section analysis-page">
+      <!-- AGRIFY Farm Intelligence Hero Header -->
+      <div class="analysis-hero-header">
+        <div class="analysis-badge">
+          <span class="badge-dot"></span>
+          <span>AGRIFY AI ADVISORY ENGINE</span>
+        </div>
+        <h1 class="analysis-title">🌱 Farm Intelligence Analyzer</h1>
+        <p class="analysis-subtitle">
+          Precision crop, soil, and nutrient advisory powered by real-time GPS coordinates, satellite soil telemetry, and microclimate forecasting.
+        </p>
+        <div class="analysis-trust-strip">
+          <span class="trust-pill"><span class="pill-icon">📍</span> GPS Micro-Targeting</span>
+          <span class="trust-pill"><span class="pill-icon">🛰️</span> Satellite Soil Telemetry</span>
+          <span class="trust-pill"><span class="pill-icon">🌤️</span> Live Microclimate Forecast</span>
+          <span class="trust-pill"><span class="pill-icon">🧠</span> Agronomic AI Suitability</span>
+        </div>
       </div>
 
       <div class="wizard">
-        <!-- Progress indicator -->
+        <!-- Guided Progress Stepper -->
         <div class="wizard-progress">
           <div class="wizard-step-indicator">
             <div class="wizard-step-dot active" id="dot-1">1</div>
@@ -41,59 +54,67 @@ export function renderAnalysis() {
             <div class="wizard-step-line" id="line-3"></div>
             <div class="wizard-step-dot" id="dot-4">4</div>
           </div>
-          <div style="display:flex;justify-content:center;gap:60px;margin-top:8px;">
-            <span style="font-size:0.7rem;color:var(--c-text-muted);">Location</span>
-            <span style="font-size:0.7rem;color:var(--c-text-muted);">Farm Details</span>
-            <span style="font-size:0.7rem;color:var(--c-text-muted);">Soil</span>
-            <span style="font-size:0.7rem;color:var(--c-text-muted);">Results</span>
+          <div class="wizard-step-labels">
+            <span class="wizard-step-label active">1. Location</span>
+            <span class="wizard-step-label">2. Farm Details</span>
+            <span class="wizard-step-label">3. Soil Telemetry</span>
+            <span class="wizard-step-label">4. AI Report</span>
           </div>
         </div>
 
         <!-- STEP 1: GPS Location -->
         <div class="wizard-panel active" id="step-1">
-          <div class="card">
-            <h3 class="section-title"><span class="icon">📍</span> Farm Location</h3>
-            <p style="color:var(--c-text-secondary);margin-bottom:var(--sp-xl);font-size:0.9rem;">
-              Use GPS for the most accurate results. Weather and soil data are fetched by coordinates, not city name.
-            </p>
+          <div class="card analysis-step-card">
+            <div class="step-card-header">
+              <div class="step-badge">STEP 1 OF 3</div>
+              <h3 class="section-title"><span class="icon">📍</span> Farm Location & Boundaries</h3>
+              <p class="step-card-subtitle">
+                Acquire precision GPS coordinates for your field. Real-time satellite soil and microclimate models are indexed to exact geographical coordinates rather than generic municipal boundaries.
+              </p>
+            </div>
 
-            <!-- GPS Primary Button -->
-            <div style="text-align:center;margin-bottom:var(--sp-xl);">
-              <button class="gps-btn" id="gps-btn" style="margin:0 auto;font-size:1rem;padding:14px 24px;">
-                📡 Capture My Farm Location (GPS)
+            <!-- GPS Primary Button & Telemetry Panel -->
+            <div class="gps-capture-panel">
+              <div class="gps-hero-badge">🛰️ Precision Satellite Targeting</div>
+              <h4 class="gps-hero-title">Automated Field Geolocation</h4>
+              <p class="gps-hero-desc">
+                Use your device's GPS to acquire coordinates. Weather and soil profiles will be synthesized for your exact farm parcel.
+              </p>
+
+              <button class="gps-btn" id="gps-btn">
+                <span class="gps-icon-live">📡</span>
+                <span>Capture My Farm Location (GPS)</span>
               </button>
-              <div id="gps-status" style="margin-top:var(--sp-md);font-size:0.85rem;color:var(--c-text-muted);"></div>
+              <div id="gps-status"></div>
 
               <!-- Map Tracking Animation -->
-              <div id="map-radar-container" style="display:none; margin: 20px auto; max-width: 400px; height: 200px; background: #e0e7ff; border-radius: 12px; position: relative; overflow: hidden; border: 2px solid #818cf8; box-shadow: inset 0 0 20px rgba(0,0,0,0.1);">
-                <div style="position: absolute; inset: 0; background-image: radial-gradient(#3b82f6 1px, transparent 1px); background-size: 15px 15px; opacity: 0.3;"></div>
-                <div style="position: absolute; top: 50%; left: 50%; width: 300px; height: 300px; background: conic-gradient(from 0deg, transparent 70%, rgba(59, 130, 246, 0.6) 100%); transform-origin: center center; animation: radar-spin 2s linear infinite; margin-top: -150px; margin-left: -150px; border-radius: 50%;"></div>
-                <div style="position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; background: #2563eb; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 15px 5px rgba(37, 99, 235, 0.6);"></div>
-                <div style="position: absolute; bottom: 10px; width: 100%; text-align: center; color: #1e3a8a; font-weight: bold; font-size: 0.9rem; z-index: 10; text-shadow: 0 0 4px white;">🛰️ Aligning with Satellites...</div>
-                <style>
-                  @keyframes radar-spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                  }
-                </style>
+              <div id="map-radar-container" style="display:none;">
+                <div class="radar-scan-grid"></div>
+                <div class="radar-sweep-beam"></div>
+                <div class="radar-center-blip"></div>
+                <div class="radar-status-msg">🛰️ Aligning with Earth Observation Satellites...</div>
               </div>
 
               <!-- Live Map iframe Container -->
-              <div id="map-iframe-container" style="display:none; margin: 20px auto; max-width: 100%; height: 250px; border-radius: 12px; overflow: hidden; border: 1px solid var(--c-border); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+              <div id="map-iframe-container" style="display:none;">
                 <iframe id="location-map-iframe" width="100%" height="100%" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src=""></iframe>
               </div>
             </div>
 
             <!-- GPS Result Display -->
-            <div id="gps-result" style="display:none;" class="card card-sm" style="background:rgba(22,163,74,0.05);">
+            <div id="gps-result" style="display:none;" class="card card-sm gps-result-card">
+              <div class="gps-result-header">
+                <span class="status-pill success">✅ Geolocation Coordinates Locked</span>
+                <span class="gps-coord-preview">Live GPS Telemetry</span>
+              </div>
               <div class="grid-2">
                 <div class="metric-row">
                   <span class="metric-label">Latitude</span>
-                  <span class="metric-value" id="display-lat">—</span>
+                  <span class="metric-value font-mono" id="display-lat">—</span>
                 </div>
                 <div class="metric-row">
                   <span class="metric-label">Longitude</span>
-                  <span class="metric-value" id="display-lon">—</span>
+                  <span class="metric-value font-mono" id="display-lon">—</span>
                 </div>
                 <div class="metric-row">
                   <span class="metric-label">Village / Town</span>
@@ -109,38 +130,40 @@ export function renderAnalysis() {
                 </div>
                 <div class="metric-row">
                   <span class="metric-label">Accuracy</span>
-                  <span class="metric-value" id="display-accuracy">—</span>
+                  <span class="metric-value accuracy-badge" id="display-accuracy">—</span>
                 </div>
               </div>
             </div>
 
             <!-- Manual Fallback -->
-            <div style="margin-top:var(--sp-xl);">
-              <div style="text-align:center;color:var(--c-text-muted);font-size:0.8rem;margin-bottom:var(--sp-md);">— or enter manually —</div>
+            <div class="manual-fallback-section">
+              <div class="divider-text-wrap">
+                <span class="divider-text">— or enter coordinates & farm details manually —</span>
+              </div>
               <div class="form-grid">
                 <div class="form-group">
-                  <label>Latitude <span class="hint">(e.g. 17.3850 for Hyderabad)</span></label>
+                  <label for="manual-lat">Latitude <span class="hint">(e.g. 17.3850 for Hyderabad)</span></label>
                   <input type="number" class="form-input" id="manual-lat" step="0.0001" placeholder="17.3850" />
                 </div>
                 <div class="form-group">
-                  <label>Longitude <span class="hint">(e.g. 78.4867 for Hyderabad)</span></label>
+                  <label for="manual-lon">Longitude <span class="hint">(e.g. 78.4867 for Hyderabad)</span></label>
                   <input type="number" class="form-input" id="manual-lon" step="0.0001" placeholder="78.4867" />
                 </div>
                 <div class="form-group">
-                  <label>Land Area <span class="hint">(acres)</span></label>
+                  <label for="w-acres">Land Area <span class="hint">(acres)</span></label>
                   <input type="number" class="form-input" id="w-acres" value="5" min="0.5" step="0.5" />
                 </div>
                 <div class="form-group">
-                  <label>Farmer Name <span class="hint">(optional)</span></label>
+                  <label for="w-farmer-name">Farmer Name <span class="hint">(optional)</span></label>
                   <div class="input-with-mic">
                     <input type="text" class="form-input" id="w-farmer-name" placeholder="Your name" />
-                    <button class="mic-btn" title="Voice input">🎤</button>
+                    <button class="mic-btn" title="Voice input" type="button">🎤</button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="wizard-actions" style="margin-top:var(--sp-xl);">
+            <div class="wizard-actions">
               <div></div>
               <button class="btn btn-primary btn-lg" id="step1-next">
                 Next: Farm Details →
@@ -151,11 +174,19 @@ export function renderAnalysis() {
 
         <!-- STEP 2: Farm Details -->
         <div class="wizard-panel" id="step-2">
-          <div class="card">
-            <h3 class="section-title"><span class="icon">🌾</span> Farm & Crop Details</h3>
+          <div class="card analysis-step-card">
+            <div class="step-card-header">
+              <div class="step-badge">STEP 2 OF 3</div>
+              <h3 class="section-title"><span class="icon">🌾</span> Farm & Crop Details</h3>
+              <p class="step-card-subtitle">
+                Specify your crop rotation history, preferred planting season, and field management history to calibrate machine learning suitability.
+              </p>
+            </div>
+
+            <div class="form-subheading">🌱 Season & Environmental Context</div>
             <div class="form-grid">
               <div class="form-group">
-                <label>Previous Crop</label>
+                <label for="w-prev-crop">Previous Crop</label>
                 <select class="form-select" id="w-prev-crop">
                   <option value="Rice">Rice</option>
                   <option value="Wheat">Wheat</option>
@@ -172,7 +203,7 @@ export function renderAnalysis() {
                 </select>
               </div>
               <div class="form-group">
-                <label>Season to Plant</label>
+                <label for="w-season">Season to Plant</label>
                 <select class="form-select" id="w-season">
                   <option value="Kharif">Kharif (Jun–Oct)</option>
                   <option value="Rabi">Rabi (Oct–Mar)</option>
@@ -180,7 +211,7 @@ export function renderAnalysis() {
                 </select>
               </div>
               <div class="form-group">
-                <label>Irrigation Type</label>
+                <label for="w-irrigation">Irrigation Type</label>
                 <select class="form-select" id="w-irrigation">
                   <option value="Drip">Drip</option>
                   <option value="Sprinkler">Sprinkler</option>
@@ -189,7 +220,7 @@ export function renderAnalysis() {
                 </select>
               </div>
               <div class="form-group">
-                <label>Region</label>
+                <label for="w-region">Region</label>
                 <select class="form-select" id="w-region">
                   <option value="South">South India</option>
                   <option value="North">North India</option>
@@ -197,8 +228,12 @@ export function renderAnalysis() {
                   <option value="West">West India</option>
                 </select>
               </div>
+            </div>
+
+            <div class="form-subheading" style="margin-top:var(--sp-xl);">🧪 Field Inputs & Historical Yield</div>
+            <div class="form-grid">
               <div class="form-group">
-                <label>Previous Fertilizer Used</label>
+                <label for="w-prev-fert">Previous Fertilizer Used</label>
                 <select class="form-select" id="w-prev-fert">
                   <option value="Urea">Urea</option>
                   <option value="DAP">DAP</option>
@@ -209,7 +244,7 @@ export function renderAnalysis() {
                 </select>
               </div>
               <div class="form-group">
-                <label>Previous Pesticide Used</label>
+                <label for="w-prev-pest">Previous Pesticide Used</label>
                 <select class="form-select" id="w-prev-pest">
                   <option value="Neem oil">Neem oil (Organic)</option>
                   <option value="Imidacloprid">Imidacloprid</option>
@@ -220,14 +255,15 @@ export function renderAnalysis() {
                 </select>
               </div>
               <div class="form-group">
-                <label>Last Season Yield <span class="hint">(kg total)</span></label>
+                <label for="w-yield-last">Last Season Yield <span class="hint">(kg total)</span></label>
                 <input type="number" class="form-input" id="w-yield-last" value="4000" min="0" />
               </div>
               <div class="form-group">
-                <label>Annual Rainfall <span class="hint">(mm, leave 0 to use live data)</span></label>
+                <label for="w-annual-rain">Annual Rainfall <span class="hint">(mm, leave 0 to use live data)</span></label>
                 <input type="number" class="form-input" id="w-annual-rain" value="0" min="0" placeholder="0 = auto from weather" />
               </div>
             </div>
+
             <div class="wizard-actions">
               <button class="btn btn-secondary" id="step2-back">← Back</button>
               <button class="btn btn-primary" id="step2-next">Next: Soil Data →</button>
@@ -237,23 +273,33 @@ export function renderAnalysis() {
 
         <!-- STEP 3: Soil Data -->
         <div class="wizard-panel" id="step-3">
-          <div class="card">
-            <h3 class="section-title"><span class="icon">🧪</span> Soil Data</h3>
+          <div class="card analysis-step-card">
+            <div class="step-card-header">
+              <div class="step-badge">STEP 3 OF 3</div>
+              <h3 class="section-title"><span class="icon">🧪</span> Soil Telemetry & Laboratory Data</h3>
+              <p class="step-card-subtitle">
+                Soil chemistry determines crop vitality and nutrient uptake. Fetch satellite soil telemetry with one click, or enter lab measurements from your local Krishi Vigyan Kendra (KVK) card.
+              </p>
+            </div>
 
             <!-- Auto-fetch soil button -->
-            <div style="background:rgba(22,163,74,0.06);border:1px solid var(--c-border);border-radius:var(--r-lg);padding:var(--sp-lg);margin-bottom:var(--sp-xl);">
-              <div style="font-weight:700;margin-bottom:var(--sp-sm);color:var(--c-text);">🛰️ Auto-Fetch Satellite Soil Data</div>
-              <p style="font-size:0.85rem;color:var(--c-text-secondary);margin-bottom:var(--sp-md);">
-                Fetches satellite soil data for your GPS coordinates.
+            <div class="satellite-fetch-banner">
+              <div class="banner-badge">🛰️ EARTH OBSERVATION SATELLITE</div>
+              <div class="banner-title">Auto-Fetch Satellite Soil Data</div>
+              <p class="banner-desc">
+                Pulls real-time satellite spectral reflectance estimates for soil NPK, pH, moisture, and carbon at your farm coordinates.
               </p>
-              <button class="btn btn-secondary" id="fetch-soil-btn">📡 Fetch Soil Data</button>
-              <span id="soil-fetch-status" style="margin-left:var(--sp-md);font-size:0.83rem;color:var(--c-text-muted);"></span>
+              <div class="banner-actions">
+                <button class="btn btn-secondary" id="fetch-soil-btn">📡 Fetch Soil Data</button>
+                <span id="soil-fetch-status"></span>
+              </div>
             </div>
 
             <!-- Soil Form -->
+            <div class="form-subheading">🧪 Soil Chemistry & Macronutrients</div>
             <div class="form-grid">
               <div class="form-group">
-                <label>Soil Type</label>
+                <label for="w-soil-type">Soil Type</label>
                 <select class="form-select" id="w-soil-type">
                   <option value="Loamy">Loamy</option>
                   <option value="Clay">Clay</option>
@@ -264,40 +310,40 @@ export function renderAnalysis() {
                 </select>
               </div>
               <div class="form-group">
-                <label>pH Level <span style="color:#ef4444;">*</span> <span class="hint">4.0–9.0</span></label>
+                <label for="w-ph">pH Level <span class="required-star">*</span> <span class="hint">4.0–9.0</span></label>
                 <input type="number" class="form-input" id="w-ph" min="4.0" max="9.0" step="0.1" placeholder="6.5" />
               </div>
               <div class="form-group">
-                <label>Nitrogen (N) <span style="color:#ef4444;">*</span> <span class="hint">0–140 kg/ha scale</span></label>
+                <label for="w-n">Nitrogen (N) <span class="required-star">*</span> <span class="hint">0–140 kg/ha scale</span></label>
                 <input type="number" class="form-input" id="w-n" min="0" max="140" placeholder="50" />
               </div>
               <div class="form-group">
-                <label>Phosphorus (P) <span style="color:#ef4444;">*</span> <span class="hint">0–145 kg/ha scale</span></label>
+                <label for="w-p">Phosphorus (P) <span class="required-star">*</span> <span class="hint">0–145 kg/ha scale</span></label>
                 <input type="number" class="form-input" id="w-p" min="0" max="145" placeholder="40" />
               </div>
               <div class="form-group">
-                <label>Potassium (K) <span style="color:#ef4444;">*</span> <span class="hint">0–205 kg/ha scale</span></label>
+                <label for="w-k">Potassium (K) <span class="required-star">*</span> <span class="hint">0–205 kg/ha scale</span></label>
                 <input type="number" class="form-input" id="w-k" min="0" max="205" placeholder="30" />
               </div>
               <div class="form-group">
-                <label>Soil Moisture <span style="color:#ef4444;">*</span> <span class="hint">20–80%</span></label>
+                <label for="w-moisture">Soil Moisture <span class="required-star">*</span> <span class="hint">20–80%</span></label>
                 <input type="number" class="form-input" id="w-moisture" min="0" max="100" placeholder="40" />
               </div>
               <div class="form-group">
-                <label>Organic Carbon <span class="hint">(dg/kg — HMR auto-converts)</span></label>
+                <label for="w-oc">Organic Carbon <span class="hint">(dg/kg — HMR auto-converts)</span></label>
                 <input type="number" class="form-input" id="w-oc" min="0" max="500" placeholder="80" />
               </div>
               <div class="form-group">
-                <label>Annual Rainfall <span class="hint">(mm)</span></label>
+                <label for="w-rainfall">Annual Rainfall <span class="hint">(mm)</span></label>
                 <input type="number" class="form-input" id="w-rainfall" min="0" max="2000" placeholder="600" />
               </div>
             </div>
 
-            <div id="soil-data-note" style="margin-top:var(--sp-md);font-size:0.8rem;color:var(--c-text-muted);"></div>
+            <div id="soil-data-note"></div>
 
-            <div style="margin-top:var(--sp-md);padding:var(--sp-md);background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:var(--r-md);">
-              <div style="font-size:0.8rem;color:var(--c-accent);">
-                💡 Fields marked with <span style="color:#ef4444;font-weight:700;">*</span> are mandatory. Use "Fetch Soil Data" above OR enter values manually from your local KVK soil report.
+            <div class="form-tip-box">
+              <div class="tip-text">
+                💡 Fields marked with <span class="required-star">*</span> are mandatory. Use <strong>"Fetch Soil Data"</strong> above OR enter values manually from your local KVK soil health report.
               </div>
             </div>
 
@@ -426,7 +472,7 @@ async function captureGPS() {
       document.getElementById('map-radar-container').style.display = 'none';
     }
   } finally {
-    btn.textContent = '📡 Capture My Farm Location (GPS)';
+    btn.innerHTML = `<span class="gps-icon-live">📡</span> <span>Capture My Farm Location (GPS)</span>`;
     btn.classList.remove('loading');
   }
 }
@@ -468,14 +514,15 @@ async function fetchSoilData() {
 
       const qualityLabel = soil.fallback ? '⚠️ Regional estimate (satellite unavailable)' : '✅ Satellite soil data loaded';
       noteDiv.innerHTML = `
-        ${qualityLabel}
+        <div class="soil-note-badge ${soil.fallback ? 'warning' : 'success'}">${qualityLabel}</div>
       `;
 
       status.textContent = soil.fallback ? '⚠️ Regional estimate used' : '✅ Loaded';
       showToast(
         soil.fallback
           ? '⚠️ Satellite data unavailable — using regional estimates'
-          : `✅ Soil data loaded for (${farmData.lat.toFixed(3)}, ${farmData.lon.toFixed(3)})`,        soil.fallback ? 'warning' : 'success'
+          : `✅ Soil data loaded for (${farmData.lat.toFixed(3)}, ${farmData.lon.toFixed(3)})`,
+        soil.fallback ? 'warning' : 'success'
       );
     } else {
       status.textContent = '❌ Failed';
@@ -507,6 +554,13 @@ function goToStep(step) {
       line.classList.toggle('completed', i < step);
     }
   }
+
+  const stepLabels = document.querySelectorAll('.wizard-step-label');
+  stepLabels.forEach((label, idx) => {
+    label.classList.toggle('active', idx + 1 === step);
+    label.classList.toggle('completed', idx + 1 < step);
+  });
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -580,11 +634,20 @@ async function submitAnalysis() {
 
   const resultsEl = document.getElementById('analysis-results');
   resultsEl.innerHTML = `
-    <div class="loading-spinner">
-      <div class="spinner"></div>
-      <div class="loading-text">🌐 Fetching live weather for your location...</div>
-      <div class="loading-text" style="font-size:0.8rem;color:var(--c-text-muted);">
-        Getting weather, soil data, and location info
+    <div class="card analysis-loading-card">
+      <div class="loading-spinner-wrap">
+        <div class="spinner"></div>
+      </div>
+      <div class="loading-heading">Generating AI Farm Intelligence</div>
+      <div class="loading-subheading">🌐 Fetching live weather & microclimate for your coordinates...</div>
+      <div class="loading-footnote">
+        Synthesizing meteorological streams, satellite soil telemetry, and predictive crop suitability models.
+      </div>
+      <div class="loading-pills-row">
+        <span class="loading-pill active">📍 Location Synchronized</span>
+        <span class="loading-pill active">🌤️ Microclimate Feed</span>
+        <span class="loading-pill active">🧪 Calibrating NPK</span>
+        <span class="loading-pill">🧠 Evaluating Suitability</span>
       </div>
     </div>
   `;
@@ -594,13 +657,13 @@ async function submitAnalysis() {
     renderResults(result, payload);
   } catch (err) {
     resultsEl.innerHTML = `
-      <div class="card" style="text-align:center;border-color:rgba(239,68,68,0.3);">
-        <div style="font-size:2.5rem;margin-bottom:var(--sp-md);">⚠️</div>
-        <h3 style="color:#f87171;margin-bottom:var(--sp-md);">Analysis Failed</h3>
-        <p style="color:var(--c-text-secondary);">${err.message}</p>
-        <div style="margin-top:var(--sp-md);font-size:0.8rem;color:var(--c-text-muted);">
+      <div class="card analysis-error-card">
+        <div class="error-badge-icon">⚠️</div>
+        <h3 class="error-title">Analysis Request Failed</h3>
+        <p class="error-desc">${err.message}</p>
+        <div class="error-footnote">
           The server may be waking up (free tier sleeps after inactivity).<br>
-          Please wait 30 seconds and try again.
+          Please wait a few moments and try again.
         </div>
         <button class="btn btn-secondary" style="margin-top:var(--sp-xl);" onclick="window.dispatchEvent(new CustomEvent('navigate',{detail:'analysis'}))">
           ← Try Again
@@ -625,6 +688,28 @@ async function renderResults(result, payload) {
   const acres = payload.area_acres || 5;
 
   let html = '';
+
+  // ---- TOP SUMMARY STRIP ----
+  html += `
+    <div class="analysis-results-meta-strip">
+      <div class="meta-strip-item">
+        <span class="meta-strip-label">📍 Field Location</span>
+        <span class="meta-strip-value">${payload.latitude?.toFixed(4)}, ${payload.longitude?.toFixed(4)}</span>
+      </div>
+      <div class="meta-strip-item">
+        <span class="meta-strip-label">🌾 Target Season</span>
+        <span class="meta-strip-value">${payload.season || 'Kharif'}</span>
+      </div>
+      <div class="meta-strip-item">
+        <span class="meta-strip-label">📐 Land Area</span>
+        <span class="meta-strip-value">${acres} Acres</span>
+      </div>
+      <div class="meta-strip-item">
+        <span class="meta-strip-label">🤖 Intelligence Mode</span>
+        <span class="meta-strip-value"><span class="badge-dot"></span> AGRIFY AI Engine</span>
+      </div>
+    </div>
+  `;
 
   // ---- ALERTS (if any danger/warning) ----
   const importantAlerts = alerts.filter(a => a.severity === 'danger' || a.severity === 'warning');
@@ -652,16 +737,19 @@ async function renderResults(result, payload) {
   // ---- TOP 3 CROP RECOMMENDATIONS ----
   if (top3.length) {
     html += `
-      <div style="margin-bottom:var(--sp-xl);">
-        <h3 class="section-title"><span class="icon">🌾</span> Top Crop Recommendations</h3>
-        <div style="font-size:0.8rem;color:var(--c-text-muted);margin-bottom:var(--sp-md);">
-          Based on: live weather (${weather.temperature}°C, ${weather.humidity}% humidity) · satellite soil data · ${payload.season} season
+      <div class="analysis-section-block" style="margin-bottom:var(--sp-xl);">
+        <div class="section-header-wrap">
+          <h3 class="section-title"><span class="icon">🌾</span> Top Crop Recommendations</h3>
+          <div class="section-context-desc">
+            Calibrated for live microclimate (${weather.temperature}°C, ${weather.humidity}% humidity), satellite soil telemetry, and ${payload.season} season.
+          </div>
         </div>
         <div class="grid-3">
     `;
     for (let i = 0; i < top3.length; i++) {
       const crop = top3[i];
       const rankEmojis = ['🥇', '🥈', '🥉'];
+      const rankBadges = ['AI Primary Choice', 'Secondary Option', 'Tertiary Option'];
       
       const cropName = await translateDynamicText(crop.crop, lang);
       const sowName = await translateDynamicText(crop.sowing_months, lang);
@@ -671,33 +759,36 @@ async function renderResults(result, payload) {
 
       html += `
         <div class="crop-rec-card ${i === 0 ? 'top-pick' : ''}">
+          <div class="crop-rank-badge">
+            <span class="rank-medal">${rankEmojis[i] || `#${i+1}`}</span>
+            <span class="rank-title">${rankBadges[i] || `Rank #${i+1}`}</span>
+          </div>
           <div class="crop-rank">${i + 1}</div>
-          <div style="font-size:1.5rem;margin-bottom:4px;">${rankEmojis[i] || `#${i+1}`}</div>
           <div class="crop-name-big" style="text-transform: capitalize;">${cropName}</div>
           <div class="suitability-bar">
             <div class="suitability-fill" style="width:${crop.suitability_score}%"></div>
           </div>
-          <div class="score-label">Suitability: ${crop.suitability_score}%</div>
-          <div style="margin-top:var(--sp-sm);display:flex;flex-wrap:wrap;gap:4px;">
+          <div class="score-label">Agronomic Fit: ${crop.suitability_score}%</div>
+          <div class="crop-tags-row">
             <span class="crop-tag season">📅 ${seasonTr}</span>
             <span class="crop-tag water">💧 ${crop.water_need}</span>
             <span class="crop-tag duration">⏱️ ${crop.duration_days}d</span>
           </div>
-          <div style="margin-top:var(--sp-md);display:flex;flex-direction:column;gap:4px;">
+          <div class="crop-metrics-list">
             <div class="metric-row">
               <span class="metric-label">Sow</span>
-              <span class="metric-value" style="font-size:0.8rem;">${sowName}</span>
+              <span class="metric-value font-sm">${sowName}</span>
             </div>
             <div class="metric-row">
               <span class="metric-label">Harvest</span>
-              <span class="metric-value" style="font-size:0.8rem;">${harvName}</span>
+              <span class="metric-value font-sm">${harvName}</span>
             </div>
             <div class="metric-row">
-              <span class="metric-label">Profit est.</span>
+              <span class="metric-label">Estimated Profit</span>
               <span class="metric-value profit">₹${(crop.net_profit_estimated || 0).toLocaleString()}</span>
             </div>
           </div>
-          ${crop.reason ? `<div style="margin-top:var(--sp-sm);font-size:0.75rem;color:var(--c-text-muted);line-height:1.5;">${reasonTr}</div>` : ''}
+          ${crop.reason ? `<div class="crop-reason-box">${reasonTr}</div>` : ''}
         </div>
       `;
     }
@@ -706,9 +797,9 @@ async function renderResults(result, payload) {
 
   // ---- LIVE DATA SUMMARY GRID ----
   html += `
-    <div class="grid-2" style="margin-bottom:var(--sp-xl);">
+    <div class="grid-2 analysis-summary-grid" style="margin-bottom:var(--sp-xl);">
       <div class="card">
-        <h3 class="section-title"><span class="icon">📍</span> Location & Live Weather</h3>
+        <h3 class="section-title"><span class="icon">📍</span> Location & Live Microclimate</h3>
         ${geo.village || geo.district ? `
         <div class="metric-row">
           <span class="metric-label">Location</span>
@@ -717,7 +808,7 @@ async function renderResults(result, payload) {
         ` : ''}
         <div class="metric-row">
           <span class="metric-label">Coordinates</span>
-          <span class="metric-value">${payload.latitude?.toFixed(4)}, ${payload.longitude?.toFixed(4)}</span>
+          <span class="metric-value font-mono">${payload.latitude?.toFixed(4)}, ${payload.longitude?.toFixed(4)}</span>
         </div>
         <div class="metric-row">
           <span class="metric-label">Temperature</span>
@@ -735,18 +826,17 @@ async function renderResults(result, payload) {
           <span class="metric-label">Wind</span>
           <span class="metric-value">${weather.wind_speed} m/s</span>
         </div>
-
       </div>
 
       <div class="card">
-        <h3 class="section-title"><span class="icon">🧪</span> Soil Profile</h3>
+        <h3 class="section-title"><span class="icon">🧪</span> Soil Telemetry Profile</h3>
         <div class="metric-row">
           <span class="metric-label">Soil Type</span>
           <span class="metric-value">${soil.soil_type || '—'}</span>
         </div>
         <div class="metric-row">
           <span class="metric-label">N · P · K</span>
-          <span class="metric-value">${soil.N || '—'} · ${soil.P || '—'} · ${soil.K || '—'}</span>
+          <span class="metric-value font-mono">${soil.N || '—'} · ${soil.P || '—'} · ${soil.K || '—'}</span>
         </div>
         <div class="metric-row">
           <span class="metric-label">pH</span>
@@ -760,7 +850,6 @@ async function renderResults(result, payload) {
           <span class="metric-label">Moisture</span>
           <span class="metric-value">${soil.moisture_pct || '—'}%</span>
         </div>
-        </div>
       </div>
     </div>
   `;
@@ -768,7 +857,7 @@ async function renderResults(result, payload) {
   // ---- IRRIGATION GUIDANCE ----
   if (irr.recommendation) {
     html += `
-      <div class="card" style="margin-bottom:var(--sp-xl);">
+      <div class="card irrigation-card" style="margin-bottom:var(--sp-xl);">
         <h3 class="section-title"><span class="icon">💧</span> Irrigation Guidance</h3>
         <div class="grid-2">
           <div>
@@ -786,7 +875,7 @@ async function renderResults(result, payload) {
             </div>
           </div>
           <div style="display:flex;align-items:center;">
-            <div style="padding:var(--sp-md);background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:var(--r-lg);font-size:0.875rem;color:var(--c-text-secondary);line-height:1.6;">
+            <div class="irrigation-advice-box">
               💧 ${await translateDynamicText(irr.recommendation, lang)}
             </div>
           </div>
@@ -882,7 +971,7 @@ async function renderResults(result, payload) {
             </div>
             <div class="metric-row">
               <span class="metric-label">NPK Ratio</span>
-              <span class="metric-value">${bf.details?.npk || '—'}</span>
+              <span class="metric-value font-mono">${bf.details?.npk || '—'}</span>
             </div>
             <div class="metric-row">
               <span class="metric-label">Qty / hectare</span>
@@ -928,7 +1017,6 @@ async function renderResults(result, payload) {
               </tr>
             </thead>
             <tbody>
-              <!-- Note: these dynamically map later -->
               ${allFeasible.map((crop, i) => `
                 <tr>
                   <td>${i + 1}</td>
@@ -956,7 +1044,7 @@ async function renderResults(result, payload) {
   }
 
   // ============================================================
-  // 📊  DATA VISUALIZATION DASHBOARD
+  // 📊 DATA VISUALIZATION DASHBOARD
   // ============================================================
   const soilForChart = {
     N: soil.N || payload.N || 0,
