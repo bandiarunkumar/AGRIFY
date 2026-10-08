@@ -1,5 +1,6 @@
 // ============================================================
-// Alerts Page — Live farm alerts by GPS
+// AGRIFY — Farm Risk & Advisory Alert Center
+// Live alerts by GPS: weather, soil, satellite NDVI, news, crop
 // ============================================================
 
 import { getAlerts, getNews, getCurrentPosition, reverseGeocode } from '../api.js';
@@ -7,16 +8,32 @@ import { showToast } from '../voice.js';
 
 export function renderAlerts() {
   return `
-    <div class="page-section">
-      <div class="page-header">
-        <h1>🚨 Farm Alert Center</h1>
-        <p>Live alerts from weather, soil, satellite NDVI, agriculture news, and crop calendars</p>
+    <div class="page-section alerts-page">
+
+      <!-- Hero Header -->
+      <div class="alerts-hero">
+        <div class="alerts-hero-badge">
+          <span class="badge-dot pulse-red"></span>
+          <span>AGRIFY FARM RISK MONITOR</span>
+        </div>
+        <h1 class="alerts-hero-title">🚨 Farm Alert Center</h1>
+        <p class="alerts-hero-sub">
+          Live alerts from weather, soil, satellite NDVI, agriculture news, and crop calendars
+        </p>
+        <div class="alerts-source-strip">
+          <span class="source-chip-pill">🌤️ Weather API</span>
+          <span class="source-chip-pill">🧪 Soil Sensors</span>
+          <span class="source-chip-pill">🛰️ Satellite NDVI</span>
+          <span class="source-chip-pill">📰 Agri News</span>
+          <span class="source-chip-pill">🌱 Crop Calendar</span>
+        </div>
       </div>
 
-      <div class="card" style="margin-bottom:var(--sp-xl);">
+      <!-- Controls Card -->
+      <div class="card alerts-controls-card">
         <h3 class="section-title"><span class="icon">📍</span> Get Alerts for My Farm</h3>
-        <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;align-items:flex-end;">
-          <div class="form-group" style="min-width:160px;">
+        <div class="alerts-controls-row">
+          <div class="form-group alerts-form-group">
             <label>Current Crop</label>
             <select class="form-select" id="alert-crop">
               <option value="rice">Rice</option>
@@ -27,7 +44,7 @@ export function renderAlerts() {
               <option value="potato">Potato</option>
             </select>
           </div>
-          <div class="form-group" style="min-width:140px;">
+          <div class="form-group alerts-form-group">
             <label>Season</label>
             <select class="form-select" id="alert-season">
               <option value="Kharif">Kharif</option>
@@ -35,26 +52,39 @@ export function renderAlerts() {
               <option value="Zaid">Zaid</option>
             </select>
           </div>
-          <button class="gps-btn" id="load-alerts-btn">📡 Load Alerts for My GPS Location</button>
+          <button class="gps-btn alerts-gps-btn" id="load-alerts-btn">
+            <span class="gps-btn-icon">📡</span> Load Alerts for My GPS Location
+          </button>
+        </div>
+        <div class="alerts-controls-note">
+          🔒 Your GPS coordinates are used only to fetch local alerts and are not stored.
         </div>
       </div>
 
+      <!-- Alert Results -->
       <div id="alerts-results">
-        <div style="text-align:center;padding:var(--sp-3xl);color:var(--c-text-muted);">
-          <div style="font-size:3rem;margin-bottom:var(--sp-md);">🔔</div>
-          <p>Click "Load Alerts" to fetch live alerts for your farm location</p>
+        <div class="alerts-empty-state">
+          <div class="alerts-empty-icon">🔔</div>
+          <div class="alerts-empty-title">No alerts loaded yet</div>
+          <p class="alerts-empty-sub">Click "Load Alerts" to fetch live risk advisories for your farm location.</p>
         </div>
       </div>
 
       <!-- News Section -->
-      <div style="margin-top:var(--sp-2xl);">
-        <div class="card">
-          <h3 class="section-title"><span class="icon">📰</span> Agriculture News</h3>
+      <div class="alerts-news-section">
+        <div class="card alerts-news-card">
+          <div class="alerts-news-header">
+            <h3 class="section-title" style="margin:0;"><span class="icon">📰</span> Agriculture News</h3>
+            <span class="alerts-news-note">Curated agri news with crop tags &amp; sentiment</span>
+          </div>
           <div id="news-results">
-            <button class="btn btn-secondary" id="load-news-btn">📡 Load Latest Agriculture News</button>
+            <button class="btn btn-secondary alerts-load-news-btn" id="load-news-btn">
+              📡 Load Latest Agriculture News
+            </button>
           </div>
         </div>
       </div>
+
     </div>
   `;
 }
@@ -73,7 +103,11 @@ async function loadAlerts() {
   btn.classList.add('loading');
 
   document.getElementById('alerts-results').innerHTML = `
-    <div class="loading-spinner"><div class="spinner"></div><div class="loading-text">Loading alerts...</div></div>
+    <div class="alerts-loading-state">
+      <div class="spinner alerts-spinner"></div>
+      <div class="alerts-loading-text">Fetching live alerts for your location...</div>
+      <div class="alerts-loading-sub">Checking weather, soil, satellite, and crop calendars</div>
+    </div>
   `;
 
   try {
@@ -86,39 +120,68 @@ async function loadAlerts() {
 
     if (alerts.length === 0) {
       document.getElementById('alerts-results').innerHTML = `
-        <div class="card" style="text-align:center;border-color:rgba(34,197,94,0.3);">
-          <div style="font-size:2.5rem;margin-bottom:var(--sp-md);">✅</div>
-          <h3 style="color:var(--c-primary-light);">All Clear!</h3>
-          <p style="color:var(--c-text-secondary);">No critical alerts for your farm at this time. Continue regular schedule.</p>
+        <div class="alerts-all-clear-card">
+          <div class="all-clear-icon">✅</div>
+          <div class="all-clear-title">All Clear!</div>
+          <p class="all-clear-sub">No critical alerts for your farm at this time. Continue regular schedule.</p>
+          <div class="all-clear-gps">📍 GPS: ${pos.lat.toFixed(3)}, ${pos.lon.toFixed(3)} · Crop: ${crop} · Season: ${season}</div>
         </div>
       `;
     } else {
+      // Count by severity
+      const dangerCount   = alerts.filter(a => a.severity === 'danger').length;
+      const warningCount  = alerts.filter(a => a.severity === 'warning').length;
+      const infoCount     = alerts.filter(a => a.severity === 'info' || a.severity === 'tip').length;
+
       document.getElementById('alerts-results').innerHTML = `
-        <div style="margin-bottom:var(--sp-md);display:flex;align-items:center;gap:var(--sp-md);">
-          <h3 class="section-title" style="margin:0;"><span class="icon">🚨</span> ${alerts.length} Active Alert${alerts.length > 1 ? 's' : ''}</h3>
-          <span style="font-size:0.78rem;color:var(--c-text-muted);">GPS: ${pos.lat.toFixed(3)}, ${pos.lon.toFixed(3)}</span>
-        </div>
-        ${alerts.map(a => `
-          <div class="alert-banner ${a.severity}" style="margin-bottom:var(--sp-sm);">
-            <span class="alert-icon">${icons[a.severity] || '⚠️'}</span>
-            <div class="alert-content">
-              <div style="display:flex;align-items:center;gap:var(--sp-sm);margin-bottom:3px;">
-                <div class="alert-title">${a.title}</div>
-                <span style="font-size:0.7rem;opacity:0.7;">${types[a.type] || ''} ${a.type || ''}</span>
-              </div>
-              <div class="alert-message">${a.message}</div>
-              ${a.source ? `<div style="margin-top:4px;font-size:0.7rem;opacity:0.6;">Source: ${a.source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>` : ''}
-            </div>
+        <div class="alerts-summary-bar">
+          <div class="alerts-summary-left">
+            <h3 class="section-title" style="margin:0;"><span class="icon">🚨</span> ${alerts.length} Active Alert${alerts.length > 1 ? 's' : ''}</h3>
+            <span class="alerts-gps-pill">📍 ${pos.lat.toFixed(3)}, ${pos.lon.toFixed(3)}</span>
           </div>
-        `).join('')}
+          <div class="alerts-severity-tally">
+            ${dangerCount  ? `<span class="severity-tally danger"><span class="tally-dot danger"></span>${dangerCount} Critical</span>` : ''}
+            ${warningCount ? `<span class="severity-tally warning"><span class="tally-dot warning"></span>${warningCount} Warning</span>` : ''}
+            ${infoCount    ? `<span class="severity-tally info"><span class="tally-dot info"></span>${infoCount} Advisory</span>` : ''}
+          </div>
+        </div>
+
+        <div class="alerts-cards-list">
+          ${alerts.map((a, i) => `
+            <div class="alert-banner ${a.severity} alerts-card-enhanced" style="animation-delay:${i * 60}ms;">
+              <div class="alert-card-left">
+                <span class="alert-icon alert-icon-large">${icons[a.severity] || '⚠️'}</span>
+                <span class="alert-type-chip">${types[a.type] || '📌'} ${a.type || 'general'}</span>
+              </div>
+              <div class="alert-content">
+                <div class="alert-card-top-row">
+                  <div class="alert-title">${a.title}</div>
+                  <span class="alert-sev-label ${a.severity}">${a.severity === 'danger' ? 'CRITICAL' : a.severity === 'warning' ? 'WARNING' : a.severity === 'tip' ? 'TIP' : 'INFO'}</span>
+                </div>
+                <div class="alert-message">${a.message}</div>
+                ${a.source ? `
+                  <div class="alert-source-row">
+                    <span class="alert-source-label">Source: ${a.source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                  </div>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="alerts-footer-note">
+          ⚠️ Alerts are AI-generated from live data. Verify critical advisories with local KVK/agriculture officials before action.
+        </div>
       `;
     }
 
     showToast(`✅ ${alerts.length} alerts loaded`, 'success');
   } catch (err) {
     document.getElementById('alerts-results').innerHTML = `
-      <div class="card" style="border-color:rgba(239,68,68,0.3);">
-        <p style="color:#f87171;">⚠️ ${err.message}</p>
+      <div class="alerts-error-card">
+        <div class="alerts-error-icon">⚠️</div>
+        <div class="alerts-error-title">Could Not Load Alerts</div>
+        <p class="alerts-error-msg">${err.message}</p>
+        <div class="alerts-error-hint">Ensure GPS permission is granted and try again.</div>
       </div>
     `;
     showToast(err.message, 'error');
@@ -130,7 +193,12 @@ async function loadAlerts() {
 
 async function loadNews() {
   const newsEl = document.getElementById('news-results');
-  newsEl.innerHTML = `<div class="loading-spinner"><div class="spinner"></div></div>`;
+  newsEl.innerHTML = `
+    <div class="alerts-loading-state" style="padding:var(--sp-xl) 0;">
+      <div class="spinner alerts-spinner"></div>
+      <div class="alerts-loading-text">Fetching agriculture news...</div>
+    </div>
+  `;
 
   try {
     const result = await getNews();
@@ -138,8 +206,11 @@ async function loadNews() {
 
     if (articles.length === 0) {
       newsEl.innerHTML = `
-        <div style="color:var(--c-text-muted);font-size:0.875rem;padding:var(--sp-md) 0;">
-          ${result.note || 'No news available. Add NEWSAPI_KEY to backend/.env for live agriculture news.'}
+        <div class="alerts-news-empty">
+          <div class="alerts-empty-icon" style="font-size:2rem;">📰</div>
+          <div style="font-size:0.88rem;color:var(--c-text-secondary);line-height:1.6;">
+            ${result.note || 'No news available. Add NEWSAPI_KEY to backend/.env for live agriculture news.'}
+          </div>
         </div>
       `;
       return;
@@ -149,26 +220,23 @@ async function loadNews() {
     const alertBadges = { danger: '🔴', warning: '🟡', none: '', info: '🔵' };
 
     newsEl.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:var(--sp-md);">
-        ${articles.map(art => `
-          <div style="padding:var(--sp-md);background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);transition:var(--t-fast);"
-            onmouseover="this.style.borderColor='var(--c-primary)'" onmouseout="this.style.borderColor='var(--c-border)'">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-md);">
-              <div style="flex:1;">
-                <a href="${art.url}" target="_blank" rel="noopener" style="color:var(--c-text);font-weight:600;font-size:0.9rem;text-decoration:none;line-height:1.4;display:block;margin-bottom:6px;">
-                  ${alertBadges[art.alert_level] || ''} ${art.title}
-                </a>
-                ${art.description ? `<p style="font-size:0.8rem;color:var(--c-text-secondary);line-height:1.5;margin-bottom:6px;">${art.description.slice(0,200)}...</p>` : ''}
-                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-                  <span class="source-chip">📰 ${art.source_name || 'Unknown'}</span>
-                  ${art.crop_tags ? art.crop_tags.split(',').slice(0,3).map(t => `<span class="crop-tag season">${t.trim()}</span>`).join('') : ''}
-                  <span style="font-size:0.7rem;color:${sentimentColors[art.sentiment] || 'var(--c-text-muted)'};">
-                    ${art.sentiment === 'positive' ? '📈' : art.sentiment === 'negative' ? '📉' : '📊'}
-                  </span>
-                  <span style="font-size:0.7rem;color:var(--c-text-muted);">
-                    ${art.published_at ? new Date(art.published_at).toLocaleDateString('en-IN') : ''}
-                  </span>
-                </div>
+      <div class="alerts-news-list">
+        ${articles.map((art, i) => `
+          <div class="alerts-news-item" style="animation-delay:${i * 50}ms;">
+            <div class="news-item-main">
+              <a href="${art.url}" target="_blank" rel="noopener" class="news-item-title">
+                ${alertBadges[art.alert_level] || ''} ${art.title}
+              </a>
+              ${art.description ? `<p class="news-item-desc">${art.description.slice(0,200)}...</p>` : ''}
+              <div class="news-item-meta">
+                <span class="source-chip">📰 ${art.source_name || 'Unknown'}</span>
+                ${art.crop_tags ? art.crop_tags.split(',').slice(0,3).map(t => `<span class="crop-tag season">${t.trim()}</span>`).join('') : ''}
+                <span class="news-sentiment-icon" style="color:${sentimentColors[art.sentiment] || 'var(--c-text-muted)'};">
+                  ${art.sentiment === 'positive' ? '📈' : art.sentiment === 'negative' ? '📉' : '📊'}
+                </span>
+                <span class="news-date">
+                  ${art.published_at ? new Date(art.published_at).toLocaleDateString('en-IN') : ''}
+                </span>
               </div>
             </div>
           </div>
@@ -176,6 +244,10 @@ async function loadNews() {
       </div>
     `;
   } catch (err) {
-    newsEl.innerHTML = `<p style="color:#f87171;font-size:0.875rem;">⚠️ ${err.message}</p>`;
+    newsEl.innerHTML = `
+      <div class="alerts-error-card" style="margin:0;">
+        <p class="alerts-error-msg">⚠️ ${err.message}</p>
+      </div>
+    `;
   }
 }
