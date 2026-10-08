@@ -1,6 +1,6 @@
 // ============================================================
-// Experts Page — Contact Real Agriculture Experts
-// Beautiful professional directory with call/WhatsApp
+// AGRIFY — Farmer Support Network / Expert Directory
+// Institutional helplines, government specialists, KVK contacts
 // ============================================================
 
 import { t } from '../i18n.js';
@@ -123,11 +123,14 @@ const expertsData = [
 function renderExpertCard(expert, index) {
   const delay = index * 0.08;
   const phoneClean = expert.phone.replace(/[^0-9+]/g, '');
+  const isTollFree = expert.phone.startsWith('1800') || expert.phone.startsWith('18002');
 
   return `
     <div class="expert-card" style="animation-delay:${delay}s; --expert-accent: ${expert.accentColor};" id="expert-${expert.id}">
       <div class="expert-card-glow"></div>
       <div class="expert-card-inner">
+
+        <!-- Header: avatar + name -->
         <div class="expert-header">
           <div class="expert-avatar-photo" style="border-color: ${expert.accentColor};">
             <img src="${expert.photo}" alt="${expert.name}" loading="lazy" />
@@ -138,10 +141,13 @@ function renderExpertCard(expert, index) {
           </div>
         </div>
 
+        <!-- Specialty tags -->
         <div class="expert-tags">
           ${expert.tags.map(tag => `<span class="expert-tag" style="border-color: ${expert.accentColor}44; color: ${expert.accentColor};">${tag}</span>`).join('')}
+          ${isTollFree ? '<span class="expert-tag expert-tag-free">📞 Free Call</span>' : ''}
         </div>
 
+        <!-- Detail rows -->
         <div class="expert-details">
           <div class="expert-detail-row">
             <span class="expert-detail-icon">🎯</span>
@@ -161,6 +167,7 @@ function renderExpertCard(expert, index) {
           </div>
         </div>
 
+        <!-- Action buttons -->
         <div class="expert-actions">
           <a href="tel:${phoneClean}" class="expert-btn expert-btn-call">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
@@ -177,6 +184,7 @@ function renderExpertCard(expert, index) {
             </span>
           `}
         </div>
+
       </div>
     </div>
   `;
@@ -185,9 +193,22 @@ function renderExpertCard(expert, index) {
 export function renderExperts() {
   return `
     <div class="page-section experts-page">
-      <div class="page-header">
-        <h1>${t('experts_title')}</h1>
-        <p>${t('experts_desc')}</p>
+
+      <!-- Hero Header -->
+      <div class="experts-hero">
+        <div class="experts-hero-badge">
+          <span class="experts-badge-verified">✓</span>
+          <span>AGRIFY VERIFIED SUPPORT NETWORK</span>
+        </div>
+        <h1 class="experts-hero-title">${t('experts_title')}</h1>
+        <p class="experts-hero-sub">${t('experts_desc')}</p>
+        <div class="experts-trust-strip">
+          <span class="experts-trust-pill">🏛️ Govt. Institutions</span>
+          <span class="experts-trust-pill">🔬 Research Bodies</span>
+          <span class="experts-trust-pill">📞 Verified Numbers</span>
+          <span class="experts-trust-pill">🆓 Many Toll-Free</span>
+          <span class="experts-trust-pill">🌐 22 Languages</span>
+        </div>
       </div>
 
       <!-- Emergency Hotline Banner -->
@@ -208,6 +229,29 @@ export function renderExperts() {
         </div>
       </div>
 
+      <!-- Stats row -->
+      <div class="experts-stats-row">
+        <div class="experts-stat-item">
+          <div class="experts-stat-num">8</div>
+          <div class="experts-stat-label">Support Channels</div>
+        </div>
+        <div class="experts-stat-divider"></div>
+        <div class="experts-stat-item">
+          <div class="experts-stat-num">₹0</div>
+          <div class="experts-stat-label">AGRIFY Fees</div>
+        </div>
+        <div class="experts-stat-divider"></div>
+        <div class="experts-stat-item">
+          <div class="experts-stat-num">22</div>
+          <div class="experts-stat-label">Languages</div>
+        </div>
+        <div class="experts-stat-divider"></div>
+        <div class="experts-stat-item">
+          <div class="experts-stat-num">24/7</div>
+          <div class="experts-stat-label">Kisan KCC</div>
+        </div>
+      </div>
+
       <!-- Expert Cards Grid -->
       <div class="experts-grid">
         ${expertsData.map((e, i) => renderExpertCard(e, i)).join('')}
@@ -220,6 +264,7 @@ export function renderExperts() {
           <strong>Note:</strong> These are publicly available institutional helpline numbers and government office contacts. AGRIFY does not charge any consultation fees. Standard call/messaging rates may apply. Toll-free numbers (1800-xxx) are free from all networks. WhatsApp messages will open in a new tab.
         </div>
       </div>
+
     </div>
   `;
 }
