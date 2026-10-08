@@ -2,12 +2,14 @@
 // Home Page — CINEMATIC HEROIC Entry with Letter Scramble
 // ============================================================
 
-import { t } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 import { renderIntroVideo, initIntroVideo } from '../components/introVideo.js';
 
 let hasPlayedIntro = false;
 
 export function renderHome() {
+  const lang = getLang();
+
   return `
     <!-- CINEMATIC INTRO OVERLAY (plays once per session) -->
     ${!hasPlayedIntro ? `
@@ -60,7 +62,10 @@ export function renderHome() {
     ` : ''}
 
     <div class="hero-section">
-      <div class="hero-badge hero-anim" style="--anim-order:0">${t('hero_badge')}</div>
+      <div class="hero-badge hero-anim" style="--anim-order:0">
+        <span class="hero-badge-dot"></span>
+        ${t('hero_badge')}
+      </div>
 
       <h1 class="hero-title">
         <span class="hero-word-line">
@@ -82,7 +87,30 @@ export function renderHome() {
         ${t('hero_subtitle')}
       </p>
 
-      <div class="hero-ctas hero-anim" style="--anim-order:8">
+      <!-- AGRIFY AI Companion Floating Banner -->
+      <div class="hero-mascot-card hero-anim" style="--anim-order:8" data-navigate="chatbot">
+        <div class="hero-mascot-avatar-wrap">
+          <img src="/ai-mascot.png" alt="AGRIFY AI Mascot" class="hero-mascot-img" />
+          <span class="hero-mascot-pulse"></span>
+        </div>
+        <div class="hero-mascot-speech">
+          <div class="hero-mascot-header">
+            <span class="hero-mascot-tag">✨ AGRIFY AI</span>
+            <span class="hero-mascot-live">${lang === 'te' ? 'ఆన్‌లైన్ · సిద్ధంగా ఉంది' : 'Active · Multilingual'}</span>
+          </div>
+          <p class="hero-mascot-quote">
+            ${lang === 'te' 
+              ? 'నమస్కారం! మీ నేల డేటా, పంట సిఫారసులు మరియు 3000+ మార్కెట్ ధరల గురించి ఏ ప్రశ్నైనా అడగండి.' 
+              : '“Namaste! I analyze your soil data, diagnose crop leaf diseases, and track mandi price trends in real-time.”'}
+          </p>
+          <div class="hero-mascot-action">
+            <span>${lang === 'te' ? 'చాట్ ప్రారంభించండి' : 'Ask AI Companion'}</span>
+            <span class="action-arrow">→</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-ctas hero-anim" style="--anim-order:9">
         <button class="btn btn-accent btn-lg" data-navigate="analysis" id="hero-start-btn">
           ${t('hero_cta_analyze')}
         </button>
@@ -94,46 +122,146 @@ export function renderHome() {
         </button>
       </div>
 
-      <div class="feature-grid hero-anim" style="max-width:1100px;margin-top:var(--sp-3xl);--anim-order:9">
+      <!-- Trust & Capability Badges -->
+      <div class="hero-trust-bar hero-anim" style="--anim-order:10">
+        <div class="trust-item">
+          <span class="trust-icon">🛰️</span>
+          <span class="trust-label">${lang === 'te' ? 'ISRIC ఉపగ్రహ నేల డేటా' : 'ISRIC Satellite Soil Grids'}</span>
+        </div>
+        <div class="trust-sep">·</div>
+        <div class="trust-item">
+          <span class="trust-icon">📊</span>
+          <span class="trust-label">${lang === 'te' ? '3000+ లైవ్ మండీలు' : '3,000+ Mandi Prices'}</span>
+        </div>
+        <div class="trust-sep">·</div>
+        <div class="trust-item">
+          <span class="trust-icon">🔬</span>
+          <span class="trust-label">${lang === 'te' ? 'AI వ్యాధి నిర్ధారణ' : 'Vision Disease AI'}</span>
+        </div>
+        <div class="trust-sep">·</div>
+        <div class="trust-item">
+          <span class="trust-icon">🗣️</span>
+          <span class="trust-label">${lang === 'te' ? 'వాయిస్ & తెలుగు మద్దతు' : 'Voice & Telugu Support'}</span>
+        </div>
+      </div>
+
+      <!-- Feature Grid -->
+      <div class="feature-grid hero-anim" style="max-width:1160px;margin-top:var(--sp-2xl);--anim-order:11">
         <div class="feature-card" data-navigate="analysis">
-          <span class="feature-card-icon">🌱</span>
+          <div class="feature-card-header">
+            <span class="feature-card-icon">🌱</span>
+            <span class="feature-badge badge-green">ML AI</span>
+          </div>
           <div class="feature-card-title">${t('feature_crop_rec')}</div>
           <div class="feature-card-desc">${t('feature_crop_rec_desc')}</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'విశ్లేషించండి' : 'Analyze Now'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
         </div>
+
         <div class="feature-card" data-navigate="analysis">
-          <span class="feature-card-icon">🌐</span>
+          <div class="feature-card-header">
+            <span class="feature-card-icon">🌐</span>
+            <span class="feature-badge badge-sand">ISRIC v2.0</span>
+          </div>
           <div class="feature-card-title">${t('feature_soil')}</div>
           <div class="feature-card-desc">${t('feature_soil_desc')}</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'నేల డేటా' : 'View Soil Health'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
         </div>
+
         <div class="feature-card" data-navigate="weather">
-          <span class="feature-card-icon">🌩️</span>
+          <div class="feature-card-header">
+            <span class="feature-card-icon">🌩️</span>
+            <span class="feature-badge badge-blue">GPS Live</span>
+          </div>
           <div class="feature-card-title">${t('feature_weather')}</div>
           <div class="feature-card-desc">${t('feature_weather_desc')}</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'వాతావరణం' : 'Check Forecast'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
         </div>
+
         <div class="feature-card" data-navigate="analysis">
-          <span class="feature-card-icon">🧬</span>
+          <div class="feature-card-header">
+            <span class="feature-card-icon">🧬</span>
+            <span class="feature-badge badge-green">Agronomy</span>
+          </div>
           <div class="feature-card-title">${t('feature_fert')}</div>
           <div class="feature-card-desc">${t('feature_fert_desc')}</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'ఎరువుల గైడ్' : 'Dosage Guide'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
         </div>
+
         <div class="feature-card" data-navigate="cropDoctor">
-          <span class="feature-card-icon">🔬</span>
+          <div class="feature-card-header">
+            <span class="feature-card-icon">🔬</span>
+            <span class="feature-badge badge-amber">CNN Vision</span>
+          </div>
           <div class="feature-card-title">${t('feature_doctor')}</div>
           <div class="feature-card-desc">${t('feature_doctor_desc')}</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'ఫోటో స్కాన్' : 'Scan Leaf Photo'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
         </div>
+
         <div class="feature-card" data-navigate="market">
-          <span class="feature-card-icon">📊</span>
+          <div class="feature-card-header">
+            <span class="feature-card-icon">📊</span>
+            <span class="feature-badge badge-sand">Agmarknet</span>
+          </div>
           <div class="feature-card-title">${t('feature_market')}</div>
           <div class="feature-card-desc">${t('feature_market_desc')}</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'మండి ధరలు' : 'Explore Markets'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
         </div>
+
         <div class="feature-card" data-navigate="chatbot">
-          <span class="feature-card-icon">💬</span>
+          <div class="feature-card-header">
+            <span class="feature-card-icon">💬</span>
+            <span class="feature-badge badge-green">Gemini AI</span>
+          </div>
           <div class="feature-card-title">${t('feature_chatbot')}</div>
           <div class="feature-card-desc">${t('feature_chatbot_desc')}</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'సందేహాలు అడగండి' : 'Chat in EN / తె'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
         </div>
+
+        <div class="feature-card" data-navigate="alerts">
+          <div class="feature-card-header">
+            <span class="feature-card-icon">🚨</span>
+            <span class="feature-badge badge-amber">Real-Time</span>
+          </div>
+          <div class="feature-card-title">${t('feature_alerts')}</div>
+          <div class="feature-card-desc">${t('feature_alerts_desc')}</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'హెచ్చరికలు చూడండి' : 'View Advisories'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
+        </div>
+
         <div class="feature-card" data-navigate="experts">
-          <span class="feature-card-icon">👨‍🌾</span>
+          <div class="feature-card-header">
+            <span class="feature-card-icon">👨‍🌾</span>
+            <span class="feature-badge badge-blue">Helplines</span>
+          </div>
           <div class="feature-card-title">Expert Connect</div>
           <div class="feature-card-desc">Talk to certified agronomists and plant pathologists directly via call or WhatsApp.</div>
+          <div class="feature-card-footer">
+            <span class="feature-action-text">${lang === 'te' ? 'నిపుణులను కలవండి' : 'Contact Specialists'}</span>
+            <span class="feature-arrow">→</span>
+          </div>
         </div>
       </div>
 

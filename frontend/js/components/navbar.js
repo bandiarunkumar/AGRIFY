@@ -34,13 +34,16 @@ export function renderNavbar(activePage, routes) {
 
   navEl.innerHTML = `
     <div class="nav-inner">
-      <div class="nav-logo" data-navigate="home">
+      <div class="nav-logo" data-navigate="home" title="AGRIFY Home">
         <div class="nav-logo-icon">🌾</div>
-        <div class="nav-logo-text">AGRI<span>FY</span></div>
+        <div class="nav-logo-text-group">
+          <div class="nav-logo-text">AGRI<span>FY</span></div>
+          <span class="nav-logo-tag">AI</span>
+        </div>
       </div>
       <div class="nav-links">
         ${navLinks}
-        <button class="nav-lang-btn" id="nav-lang-btn">
+        <button class="nav-lang-btn" id="nav-lang-btn" title="Switch Language">
           ${currentLang === 'en' ? '🇮🇳 తె' : '🇺🇸 EN'}
         </button>
       </div>
@@ -72,6 +75,17 @@ export function renderMobileNav(activePage, routes) {
     document.body.appendChild(mobileNavEl);
   }
 
+  const labelMap = {
+    home: t('nav_home'),
+    analysis: t('nav_analyzer'),
+    weather: t('nav_weather'),
+    market: t('nav_market'),
+    cropDoctor: t('nav_cropDoctor'),
+    chatbot: t('nav_chatbot'),
+    alerts: t('nav_alerts'),
+    experts: t('nav_experts'),
+  };
+
   const visiblePages = ['home', 'analysis', 'weather', 'market', 'alerts'];
   mobileNavEl.innerHTML = visiblePages.map(key => {
     const r = routes[key];
@@ -79,7 +93,7 @@ export function renderMobileNav(activePage, routes) {
     return `
       <button class="mobile-nav-item ${activePage === key ? 'active' : ''}" data-navigate="${key}">
         <span class="mn-icon">${r.icon}</span>
-        ${r.label}
+        <span class="mn-label">${labelMap[key] || r.label}</span>
       </button>
     `;
   }).join('');

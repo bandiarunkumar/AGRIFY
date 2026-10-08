@@ -13,12 +13,29 @@ export function renderFooter() {
   footerEl.innerHTML = `
     <div class="footer-container">
       <div class="footer-grid">
+        <!-- Brand Info -->
+        <div class="footer-col footer-col-brand">
+          <div class="footer-brand">
+            <span class="footer-logo">🌾</span>
+            <span class="footer-brand-name">AGRI<span class="green">FY</span></span>
+          </div>
+          <p class="footer-tagline">
+            ${lang === 'te' 
+              ? 'ఉపగ్రహ నేల డేటా, ప్రత్యక్ష వాతావరణం మరియు కృత్రిమ మేధస్సుతో భారతీయ రైతులకు అధునాతన వ్యవసాయ సహాయకుడు.' 
+              : 'Next-generation agricultural intelligence for Indian farmers — combining satellite soil data, live weather, and adaptive AI.'}
+          </p>
+          <div class="footer-status-badge">
+            <span class="status-pulse"></span>
+            <span>${lang === 'te' ? 'సిస్టమ్ సిద్ధంగా ఉంది · GPS ఆన్‌లైన్' : 'Satellite & AI Engines Online'}</span>
+          </div>
+        </div>
+
         <!-- Quick Links -->
         <div class="footer-col">
-          <div class="footer-heading">🔗 ${lang === 'te' ? 'త్వరిత లింకులు' : 'Quick Links'}</div>
+          <div class="footer-heading">🔗 ${lang === 'te' ? 'ముఖ్యమైన సాధనాలు' : 'Core Tools'}</div>
           <ul class="footer-list">
             <li><a href="#" data-navigate="analysis" class="footer-link">🌱 ${lang === 'te' ? 'పొలం విశ్లేషణ' : 'Farm Analysis'}</a></li>
-            <li><a href="#" data-navigate="weather" class="footer-link">🌤️ ${lang === 'te' ? 'వాతావరణం' : 'Weather Forecast'}</a></li>
+            <li><a href="#" data-navigate="weather" class="footer-link">🌤️ ${lang === 'te' ? 'వాతావరణ అంచనా' : 'Weather Forecast'}</a></li>
             <li><a href="#" data-navigate="market" class="footer-link">📊 ${lang === 'te' ? 'మార్కెట్ ధరలు' : 'Market Prices'}</a></li>
             <li><a href="#" data-navigate="cropDoctor" class="footer-link">🔬 ${lang === 'te' ? 'పంట వైద్యుడు' : 'Crop Doctor'}</a></li>
           </ul>
@@ -26,34 +43,33 @@ export function renderFooter() {
 
         <!-- More Features -->
         <div class="footer-col">
-          <div class="footer-heading">🌾 ${lang === 'te' ? 'మరిన్ని' : 'More'}</div>
+          <div class="footer-heading">🌾 ${lang === 'te' ? 'సేవలు & సహాయం' : 'Services & Support'}</div>
           <ul class="footer-list">
-            <li><a href="#" data-navigate="chatbot" class="footer-link">💬 ${lang === 'te' ? 'స్మార్ట్ సహాయకుడు' : 'Smart Assistant'}</a></li>
-            <li><a href="#" data-navigate="alerts" class="footer-link">🚨 ${lang === 'te' ? 'హెచ్చరికలు' : 'Farm Alerts'}</a></li>
-            <li><span class="footer-text">📞 ${lang === 'te' ? 'కిసాన్ హెల్ప్‌లైన్' : 'Kisan Helpline'}: 1800-180-1551</span></li>
-            <li><span class="footer-text">🌐 ${lang === 'te' ? 'ఇంగ్లీష్ & తెలుగు' : 'English & Telugu'}</span></li>
+            <li><a href="#" data-navigate="chatbot" class="footer-link">💬 ${lang === 'te' ? 'స్మార్ట్ సహాయకుడు' : 'AI Farm Assistant'}</a></li>
+            <li><a href="#" data-navigate="alerts" class="footer-link">🚨 ${lang === 'te' ? 'పొలం హెచ్చరికలు' : 'Farm Alerts'}</a></li>
+            <li><a href="#" data-navigate="experts" class="footer-link">👨‍🌾 ${lang === 'te' ? 'నిపుణుల సంప్రదింపు' : 'Expert Connect'}</a></li>
+            <li><span class="footer-text">📞 ${lang === 'te' ? 'కిసాన్ టోల్-ఫ్రీ' : 'Kisan Helpline'}: 1800-180-1551</span></li>
           </ul>
         </div>
 
-        <!-- About -->
+        <!-- Trust & Origin -->
         <div class="footer-col">
           <div class="footer-heading">ℹ️ ${lang === 'te' ? 'గురించి' : 'About'}</div>
           <ul class="footer-list">
-            <li><span class="footer-text">${lang === 'te' ? 'భారతీయ రైతుల కోసం తయారు చేయబడింది' : 'Made for Indian Farmers'}</span></li>
-            <li><span class="footer-text">${lang === 'te' ? 'GPS-ఆధారిత విశ్లేషణ' : 'GPS-based Analysis'}</span></li>
-            <li><span class="footer-text">${lang === 'te' ? 'పంట & ఎరువుల సిఫారసులు' : 'Crop & Fertilizer Recommendations'}</span></li>
-            <li><span class="footer-text">${lang === 'te' ? '3000+ మండి మార్కెట్ ధరలు' : '3000+ Mandi Market Prices'}</span></li>
+            <li><span class="footer-text">🇮🇳 ${lang === 'te' ? 'భారతీయ రైతుల కోసం రూపొందించబడింది' : 'Built for Indian Farmers'}</span></li>
+            <li><span class="footer-text">🛰️ ${lang === 'te' ? 'ISRIC & ఉపగ్రహ నేల డేటా' : 'ISRIC & Satellite Soil Data'}</span></li>
+            <li><span class="footer-text">🌾 ${lang === 'te' ? '3000+ అగ్‌మార్క్‌నెట్ మండీలు' : '3000+ Agmarknet Mandis'}</span></li>
+            <li><span class="footer-text">🌐 ${lang === 'te' ? 'ఇంగ్లీష్ & తెలుగు భాషా మద్దతు' : 'English & Telugu Multi-Language'}</span></li>
           </ul>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <div class="footer-brand">
-          <span class="footer-logo">🌾</span>
-          <span class="footer-brand-name">AGRI<span class="green">FY</span></span>
-        </div>
         <div class="footer-copy">
-          © ${new Date().getFullYear()} AGRIFY — ${lang === 'te' ? 'భారతీయ రైతుల కోసం నిర్మించబడింది' : 'Built for Indian Farmers'} 🇮🇳
+          © ${new Date().getFullYear()} AGRIFY — ${lang === 'te' ? 'భారతీయ వ్యవసాయ సాధికారత' : 'Empowering Indian Agriculture with Data & AI'} 🇮🇳
+        </div>
+        <div class="footer-bottom-meta">
+          <span>🌿 Eco-Conscious AI</span> · <span>🔒 Privacy First</span> · <span>🆓 100% Free for Farmers</span>
         </div>
       </div>
     </div>
