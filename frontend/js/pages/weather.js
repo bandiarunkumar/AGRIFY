@@ -1,6 +1,6 @@
 // ============================================================
-// Weather Page — GPS-first coordinate-based weather
-// With data visualization charts
+// AGRIFY Weather Page — Field Weather Command Center
+// GPS-first coordinate-based weather with agricultural analytics
 // ============================================================
 
 import { getWeatherByCoords, getForecastByCoords, getWeather, getForecast, getCurrentPosition, reverseGeocode } from '../api.js';
@@ -24,29 +24,73 @@ function destroyWeatherChart(id) {
 
 export function renderWeather() {
   return `
-    <div class="page-section">
-      <div class="page-header">
-        <h1>🌤️ Live Weather</h1>
-        <p>GPS-based live weather with 5-day farming forecast, charts, and advisories.</p>
-      </div>
-
-      <!-- Input Area -->
-      <div class="card" style="margin-bottom:var(--sp-xl);">
-        <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;align-items:flex-end;">
-          <div style="flex:1;min-width:200px;">
-            <label style="display:block;font-size:0.83rem;font-weight:600;color:var(--c-text-secondary);margin-bottom:var(--sp-sm);">City Name</label>
-            <input type="text" class="form-input" id="wx-city" placeholder="Hyderabad, Warangal, Vijayawada..." />
-          </div>
-          <button class="btn btn-secondary" id="wx-search-btn">🔍 Search</button>
-          <button class="gps-btn" id="wx-gps-btn">📡 Use My GPS Location</button>
+    <div class="page-section weather-page">
+      <!-- Observatory Hero Header -->
+      <div class="weather-hero-header">
+        <div class="weather-badge">
+          <span class="badge-dot"></span>
+          <span>AGRIFY MICROCLIMATE OBSERVATORY</span>
+        </div>
+        <h1 class="weather-title">🌤️ Real-Time Field Weather Intelligence</h1>
+        <p class="weather-subtitle">
+          GPS coordinate-precision meteorology, 5-day agricultural forecast modeling, and agronomic spraying & disease advisories.
+        </p>
+        <div class="weather-trust-strip">
+          <span class="trust-pill"><span class="pill-icon">📍</span> GPS Micro-Coordinates</span>
+          <span class="trust-pill"><span class="pill-icon">🌦️</span> OpenWeather Real-Time Feeds</span>
+          <span class="trust-pill"><span class="pill-icon">🌾</span> Agricultural Spray Index</span>
+          <span class="trust-pill"><span class="pill-icon">📈</span> 5-Day Trend Analytics</span>
         </div>
       </div>
 
-      <!-- Results -->
+      <!-- Location & Search Control Card -->
+      <div class="card wx-search-card" style="margin-bottom:var(--sp-xl);">
+        <div class="wx-search-form">
+          <div class="wx-input-wrap">
+            <label for="wx-city" class="wx-input-label">Search Indian City / District</label>
+            <div class="wx-input-inner">
+              <span class="wx-input-icon">🔍</span>
+              <input type="text" class="form-input" id="wx-city" placeholder="Hyderabad, Warangal, Vijayawada, Guntur..." />
+            </div>
+          </div>
+          <div class="wx-btn-group">
+            <button class="btn btn-secondary" id="wx-search-btn">🔍 Search</button>
+            <button class="gps-btn" id="wx-gps-btn">
+              <span class="gps-icon-live">📡</span>
+              <span>Use My GPS Location</span>
+            </button>
+          </div>
+        </div>
+        <div class="wx-search-hint">
+          <span>💡 <strong>GPS Precision:</strong> Coordinates fetch hyper-local microclimate data for your exact field rather than broad municipal averages.</span>
+        </div>
+      </div>
+
+      <!-- Results Container -->
       <div id="weather-results">
-        <div style="text-align:center;padding:var(--sp-3xl);color:var(--c-text-muted);">
-          <div style="font-size:3rem;margin-bottom:var(--sp-md);">🌤️</div>
-          <p>Use GPS or search a city to see live weather and 5-day farming forecast</p>
+        <div class="card wx-empty-card">
+          <div class="wx-empty-icon-wrap">
+            <span class="wx-empty-satellite">🛰️</span>
+            <span class="wx-empty-cloud">🌤️</span>
+          </div>
+          <h3 class="wx-empty-title">Awaiting Field Location</h3>
+          <p class="wx-empty-desc">
+            Acquire your device GPS or search an Indian district above to view live microclimate vitals, 5-day farming forecasts, and spray advisories.
+          </p>
+          <div class="wx-empty-features">
+            <div class="wx-feat-item">
+              <span class="wx-feat-icon">💨</span>
+              <span class="wx-feat-text">Spray Timing Guidance</span>
+            </div>
+            <div class="wx-feat-item">
+              <span class="wx-feat-icon">💧</span>
+              <span class="wx-feat-text">Disease Risk from Humidity</span>
+            </div>
+            <div class="wx-feat-item">
+              <span class="wx-feat-icon">🌧️</span>
+              <span class="wx-feat-text">Precipitation Scheduling</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -87,7 +131,7 @@ async function fetchByGPS() {
     showError(err.message);
     showToast(err.message, 'error');
   } finally {
-    btn.textContent = '📡 Use My GPS Location';
+    btn.innerHTML = `<span class="gps-icon-live">📡</span> <span>Use My GPS Location</span>`;
     btn.classList.remove('loading');
   }
 }
@@ -122,17 +166,33 @@ async function fetchByCity() {
 
 function showLoading() {
   document.getElementById('weather-results').innerHTML = `
-    <div class="loading-spinner">
-      <div class="spinner"></div>
-      <div class="loading-text">Fetching live weather data...</div>
+    <div class="card wx-loading-card">
+      <div class="loading-spinner-wrap">
+        <div class="spinner"></div>
+      </div>
+      <div class="loading-heading">Acquiring Meteorological Telemetry</div>
+      <div class="loading-subheading">🌐 Fetching live weather & atmospheric data...</div>
+      <div class="loading-footnote">
+        Synchronizing ground station feeds and satellite microclimate models.
+      </div>
+      <div class="loading-pills-row">
+        <span class="loading-pill active">📍 Location Pinpointed</span>
+        <span class="loading-pill active">🌤️ Fetching Atmosphere</span>
+        <span class="loading-pill">📊 Computing Agronomic Forecast</span>
+      </div>
     </div>
   `;
 }
 
 function showError(msg) {
   document.getElementById('weather-results').innerHTML = `
-    <div class="card" style="text-align:center;border-color:rgba(239,68,68,0.3);">
-      <p style="color:#f87171;">⚠️ ${msg}</p>
+    <div class="card wx-error-card">
+      <div class="error-badge-icon">⚠️</div>
+      <h3 class="error-title">Weather Retrieval Failed</h3>
+      <p class="error-desc">${msg}</p>
+      <div class="error-footnote">
+        Please check your network connection, search query, or device GPS location permissions and try again.
+      </div>
     </div>
   `;
 }
@@ -144,47 +204,80 @@ function renderWeatherResults(weather, forecast, locationName, source, gpsPos = 
 
   let html = '';
 
-  // Hero card
+  // ---- HERO PRESENT-CONDITION CARD (Focal Point) ----
   html += `
     <div class="weather-hero" style="margin-bottom:var(--sp-xl);position:relative;">
-      ${source === 'gps' ? '<div class="dq-badge dq-live" style="margin-bottom:var(--sp-sm);">📡 GPS — Coordinates-based</div>' : '<div class="dq-badge dq-reference" style="margin-bottom:var(--sp-sm);">🏙️ City Search</div>'}
-      <div class="weather-icon-big">${emojiIcon}</div>
-      <div class="weather-temp-big">${weather.temperature}°C</div>
-      <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--c-primary-light);margin-bottom:4px;">${locationName}</div>
-      <div style="color:var(--c-text-secondary);font-size:1.05rem;">${weather.description}</div>
-      ${source === 'gps' && gpsPos ? `<div style="font-size:0.75rem;color:var(--c-text-muted);margin-top:6px;">📍 ${gpsPos.lat.toFixed(5)}, ${gpsPos.lon.toFixed(5)} (±${Math.round(gpsPos.accuracy)}m)</div>` : ''}
+      <div class="weather-hero-top-bar">
+        ${source === 'gps' 
+          ? '<div class="dq-badge dq-live"><span class="badge-dot"></span> 📡 GPS — Coordinates-Based Telemetry</div>' 
+          : '<div class="dq-badge dq-reference">🏙️ City Search Reference</div>'}
+        <span class="weather-updated-tag">🕒 Live Observation</span>
+      </div>
+
+      <div class="weather-hero-body">
+        <div class="weather-icon-big">${emojiIcon}</div>
+        <div class="weather-temp-big">${weather.temperature}°C</div>
+        <div class="weather-location-name">📍 ${locationName}</div>
+        <div class="weather-condition-desc">${weather.description}</div>
+        ${source === 'gps' && gpsPos ? `<div class="weather-coords-pill">📍 Lat: ${gpsPos.lat.toFixed(5)}, Lon: ${gpsPos.lon.toFixed(5)} <span class="accuracy-tag">(±${Math.round(gpsPos.accuracy)}m accuracy)</span></div>` : ''}
+      </div>
     </div>
   `;
 
-  // Stats grid
+  // ---- STATS / VITALS GRID ----
   html += `
-    <div class="grid-4" style="margin-bottom:var(--sp-xl);">
-      <div class="stat-card">
+    <div class="grid-4 weather-vitals-grid" style="margin-bottom:var(--sp-xl);">
+      <div class="stat-card wx-stat-card">
         <div class="stat-icon amber">💧</div>
         <div class="stat-label">Humidity</div>
         <div class="stat-value">${weather.humidity}%</div>
-        <div class="stat-sub">${weather.humidity > 80 ? '⚠️ High disease risk' : weather.humidity < 30 ? '⚠️ Very dry' : '✅ Normal'}</div>
+        <div class="stat-sub ${weather.humidity > 80 ? 'sub-danger' : weather.humidity < 30 ? 'sub-warning' : 'sub-normal'}">
+          ${weather.humidity > 80 ? '⚠️ High disease risk' : weather.humidity < 30 ? '⚠️ Very dry' : '✅ Normal range'}
+        </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card wx-stat-card">
         <div class="stat-icon blue">💨</div>
-        <div class="stat-label">Wind Speed</div>
-        <div class="stat-value">${weather.wind_speed}<span style="font-size:1rem;"> m/s</span></div>
-        <div class="stat-sub">${weather.wind_speed > 10 ? '⚠️ Avoid spraying' : '✅ Good for spray'}</div>
+        <div class="stat-label">Wind Velocity</div>
+        <div class="stat-value">${weather.wind_speed}<span class="stat-unit"> m/s</span></div>
+        <div class="stat-sub ${weather.wind_speed > 10 ? 'sub-warning' : 'sub-normal'}">
+          ${weather.wind_speed > 10 ? '⚠️ Avoid spraying' : '✅ Good for spray'}
+        </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card wx-stat-card">
         <div class="stat-icon green">🌧️</div>
-        <div class="stat-label">Rainfall</div>
-        <div class="stat-value">${weather.rainfall}<span style="font-size:1rem;"> mm</span></div>
-        <div class="stat-sub">Last hour</div>
+        <div class="stat-label">Precipitation</div>
+        <div class="stat-value">${weather.rainfall}<span class="stat-unit"> mm</span></div>
+        <div class="stat-sub">Past hour accumulation</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card wx-stat-card">
         <div class="stat-icon red">📊</div>
-        <div class="stat-label">Pressure</div>
-        <div class="stat-value">${weather.pressure}<span style="font-size:0.9rem;"> hPa</span></div>
-        <div class="stat-sub">Temp: ${weather.temp_min}–${weather.temp_max}°C</div>
+        <div class="stat-label">Atmospheric Pressure</div>
+        <div class="stat-value">${weather.pressure}<span class="stat-unit"> hPa</span></div>
+        <div class="stat-sub font-mono">Range: ${weather.temp_min}–${weather.temp_max}°C</div>
       </div>
     </div>
   `;
+
+  // ---- FARMING ADVISORY (Prominently Framed) ----
+  if (advisory.length) {
+    const icons = { danger: '🔴', warning: '🟡', info: '🔵', tip: '✅' };
+    html += `
+      <div class="card wx-advisory-card" style="margin-bottom:var(--sp-xl);">
+        <h3 class="section-title"><span class="icon">🌾</span> Agricultural Weather Advisory</h3>
+        <div class="advisory-list">
+          ${advisory.map(a => `
+            <div class="alert-banner ${a.type}">
+              <span class="alert-icon">${icons[a.type] || '📢'}</span>
+              <div class="alert-content">
+                <div class="alert-title">${a.title}</div>
+                <div class="alert-message">${a.message}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
 
   // ===== DATA VISUALIZATION SECTION =====
   html += `
@@ -194,7 +287,7 @@ function renderWeatherResults(weather, forecast, locationName, source, gpsPos = 
     </div>
   `;
 
-  // Chart 1: Weather Conditions Polar Area (from charts.js)
+  // Chart 1: Weather Conditions Polar Area & Chart 2: Temperature Breakdown
   html += `
     <div class="grid-2" style="margin-bottom:var(--sp-xl);">
       <div class="card viz-card">
@@ -246,18 +339,21 @@ function renderWeatherResults(weather, forecast, locationName, source, gpsPos = 
 
     // Forecast cards
     html += `
-      <div class="card" style="margin-bottom:var(--sp-xl);">
-        <h3 class="section-title"><span class="icon">📅</span> 5-Day Forecast Cards</h3>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:var(--sp-sm);">
+      <div class="card wx-forecast-container" style="margin-bottom:var(--sp-xl);">
+        <div class="forecast-header-wrap">
+          <h3 class="section-title"><span class="icon">📅</span> 5-Day Forecast Cards</h3>
+          <span class="forecast-subtitle">Daily agricultural outlook and precipitation expectations</span>
+        </div>
+        <div class="forecast-cards-grid">
           ${forecastDays.map(day => `
             <div class="forecast-card">
-              <div style="font-weight:700;font-size:0.85rem;color:var(--c-text);">${day.short_day}</div>
-              <div style="font-size:0.72rem;color:var(--c-text-muted);margin-bottom:var(--sp-sm);">${day.date}</div>
-              <div style="font-size:1.6rem;margin-bottom:4px;">${WX_ICONS[day.icon] || '🌤️'}</div>
-              <div style="font-weight:700;">${day.temp_max}°</div>
-              <div style="color:var(--c-text-muted);font-size:0.8rem;">${day.temp_min}°</div>
-              ${day.rainfall_total > 0 ? `<div style="color:#60a5fa;font-size:0.75rem;margin-top:4px;">🌧️ ${day.rainfall_total}mm</div>` : ''}
-              <div style="font-size:0.7rem;color:var(--c-text-muted);margin-top:4px;">${day.humidity_avg}%</div>
+              <div class="forecast-day-name">${day.short_day}</div>
+              <div class="forecast-date-str">${day.date}</div>
+              <div class="forecast-icon-wrap">${WX_ICONS[day.icon] || '🌤️'}</div>
+              <div class="forecast-temp-max">${day.temp_max}°</div>
+              <div class="forecast-temp-min">${day.temp_min}°</div>
+              ${day.rainfall_total > 0 ? `<div class="forecast-rain-pill">🌧️ ${day.rainfall_total}mm</div>` : '<div class="forecast-dry-pill">Dry</div>'}
+              <div class="forecast-humidity-text">💧 ${day.humidity_avg}%</div>
             </div>
           `).join('')}
         </div>
@@ -276,25 +372,6 @@ function renderWeatherResults(weather, forecast, locationName, source, gpsPos = 
           <span class="viz-insight-icon">🐛</span>
           <span>${forecastDays.some(d => d.humidity_avg > 80) ? '⚠️ High humidity days detected — increased fungal disease risk. Consider preventive spray.' : '✅ Humidity levels are moderate — low disease pressure expected.'}</span>
         </div>
-      </div>
-    `;
-  }
-
-  // Farming advisory
-  if (advisory.length) {
-    const icons = { danger: '🔴', warning: '🟡', info: '🔵', tip: '✅' };
-    html += `
-      <div class="card">
-        <h3 class="section-title"><span class="icon">🌾</span> Farming Advisory</h3>
-        ${advisory.map(a => `
-          <div class="alert-banner ${a.type}" style="margin-bottom:8px;">
-            <span class="alert-icon">${icons[a.type] || '📢'}</span>
-            <div class="alert-content">
-              <div class="alert-title">${a.title}</div>
-              <div class="alert-message">${a.message}</div>
-            </div>
-          </div>
-        `).join('')}
       </div>
     `;
   }
