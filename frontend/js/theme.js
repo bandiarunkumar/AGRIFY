@@ -13,7 +13,8 @@
       const current = root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       btn.setAttribute('aria-label', 'Switch to ' + (current === 'dark' ? 'light' : 'dark') + ' theme');
       btn.setAttribute('title', 'Theme: ' + current + ' (click to switch)');
-      btn.innerHTML = (current === 'dark' ? '☀' : '☾') + '<span>' + (current === 'dark' ? 'Light' : 'Dark') + '</span>';
+      const label = (current === 'dark' ? '☀' : '☾') + '<span>' + (current === 'dark' ? 'Light' : 'Dark') + '</span>';
+      if (btn.innerHTML !== label) btn.innerHTML = label;
     }
   };
   apply(read());
