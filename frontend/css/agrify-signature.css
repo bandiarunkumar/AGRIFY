@@ -1,0 +1,76 @@
+/* AGRIFY Signature System — original Premium AgriTech design layer */
+:root {
+  color-scheme: light;
+  --ag-bg: #f4f7f1;
+  --ag-surface: #ffffff;
+  --ag-surface-2: #edf3e8;
+  --ag-text: #17291e;
+  --ag-muted: #64766a;
+  --ag-line: #dce6d9;
+  --ag-primary: #246b45;
+  --ag-primary-strong: #164c31;
+  --ag-accent: #b8e65b;
+  --ag-glow: rgba(36,107,69,.12);
+  --ag-shadow: 0 18px 50px rgba(28,59,38,.08);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ag-bg: #101a15;
+  --ag-surface: #17251c;
+  --ag-surface-2: #203328;
+  --ag-text: #eff7ee;
+  --ag-muted: #a4b8a7;
+  --ag-line: #2c4434;
+  --ag-primary: #83d49a;
+  --ag-primary-strong: #b4edc1;
+  --ag-accent: #c9f477;
+  --ag-glow: rgba(131,212,154,.12);
+  --ag-shadow: 0 18px 50px rgba(0,0,0,.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ag-bg:#101a15; --ag-surface:#17251c; --ag-surface-2:#203328;
+    --ag-text:#eff7ee; --ag-muted:#a4b8a7; --ag-line:#2c4434;
+    --ag-primary:#83d49a; --ag-primary-strong:#b4edc1; --ag-accent:#c9f477;
+    --ag-glow:rgba(131,212,154,.12); --ag-shadow:0 18px 50px rgba(0,0,0,.18);
+  }
+}
+html { background:var(--ag-bg); }
+body { background:var(--ag-bg); color:var(--ag-text); transition:background-color .2s,color .2s; }
+body, button, input, textarea, select { font-family: "Inter", system-ui, sans-serif; }
+::selection { background:var(--ag-accent); color:#173321; }
+a { text-underline-offset:3px; }
+button, input, textarea, select { accent-color:var(--ag-primary); }
+:where(.page-section, #app, #navbar, #footer-root) { color:var(--ag-text); }
+:where(.card,.dashboard-card,.stat-card,.feature-card,.panel,.weather-card,.market-card,.chatbot-fullscreen,.chatbot-header,.chatbot-input-bar,.chat-bubble-content,.modal-content,.sidebar,.navbar,.nav-menu,.farm-card,.recommendation-card) {
+  border-color:var(--ag-line);
+}
+:where(.card,.dashboard-card,.stat-card,.feature-card,.panel,.weather-card,.market-card,.farm-card,.recommendation-card) {
+  box-shadow:var(--ag-shadow);
+  border-radius:18px;
+}
+:where(input,textarea,select,.form-control) {
+  color:var(--ag-text); background:var(--ag-surface); border-color:var(--ag-line);
+}
+:where(input,textarea,select,.form-control):focus {
+  outline:2px solid var(--ag-glow); border-color:var(--ag-primary);
+}
+:where(button,.btn,.nav-link,.welcome-chip,.chat-tool-btn) { transition:transform .18s ease, box-shadow .18s ease, background-color .18s ease; }
+:where(button,.btn):focus-visible, a:focus-visible { outline:3px solid var(--ag-accent); outline-offset:3px; }
+:where(.btn-primary,.primary-btn,.chatbot-send-btn) { background:var(--ag-primary); color:#fff; border-color:transparent; }
+:where(.btn-primary,.primary-btn,.chatbot-send-btn):hover { transform:translateY(-1px); box-shadow:0 8px 22px var(--ag-glow); }
+.ag-theme-toggle {
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  min-height:38px; padding:8px 12px; border:1px solid var(--ag-line);
+  border-radius:999px; color:var(--ag-text); background:var(--ag-surface);
+  font:600 12px/1 "Inter",sans-serif; cursor:pointer;
+}
+.ag-theme-toggle:hover { border-color:var(--ag-primary); box-shadow:0 4px 16px var(--ag-glow); }
+.ag-theme-toggle svg { width:16px; height:16px; }
+.ag-brand-mark { display:inline-grid; place-items:center; width:34px; height:34px; border-radius:11px; background:var(--ag-primary); color:#fff; font-weight:800; letter-spacing:-.06em; }
+:where(.chatbot-page,.chatbot-fullscreen) { background:var(--ag-bg); color:var(--ag-text); }
+:where(.chatbot-header,.chatbot-input-bar) { background:var(--ag-surface); }
+:where(.chat-bubble.bot .chat-bubble-content) { background:var(--ag-surface-2); color:var(--ag-text); }
+:where(.chatbot-textarea) { background:var(--ag-surface); color:var(--ag-text); }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition:none!important; scroll-behavior:auto!important; } }
