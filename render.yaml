@@ -40,9 +40,10 @@ services:
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
-      # --- Set via Render Dashboard for staging frontend domain ---
-      # ALLOWED_ORIGINS     (e.g. https://<your-staging-subdomain>.vercel.app)
-      # FRONTEND_URL        (e.g. https://<your-staging-subdomain>.vercel.app)
+      - key: ALLOWED_ORIGINS
+        value: "https://agrify-staging.vercel.app"
+      - key: FRONTEND_URL
+        value: "https://agrify-staging.vercel.app"
       # Note: Frontend communicates directly with Crop Doctor via VITE_IMAGE_API_BASE_URL
       # GEMINI_API_KEY      (optional, for live AI Agent tests)
       # OPENAI_API_KEY      (optional, fallback AI)
@@ -64,9 +65,12 @@ services:
     envVars:
       - key: FLASK_ENV
         value: production
-      # --- Set via Render Dashboard for staging frontend domain ---
-      # ALLOWED_ORIGINS     (e.g. https://<your-staging-subdomain>.vercel.app)
-      # FRONTEND_URL        (e.g. https://<your-staging-subdomain>.vercel.app)
+      - key: PYTHON_VERSION
+        value: "3.12.3"
+      - key: ALLOWED_ORIGINS
+        value: "https://agrify-staging.vercel.app"
+      - key: FRONTEND_URL
+        value: "https://agrify-staging.vercel.app"
 
 # -----------------------------------------------------------
 # PostgreSQL Managed Database — STAGING
