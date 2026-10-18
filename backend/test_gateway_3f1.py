@@ -424,14 +424,14 @@ class TestAPIKeyNeverInOutput(unittest.TestCase):
 
     def test_n2_gateway_init_no_key_exposure(self):
         """Gateway object attributes should not expose keys through normal serialization."""
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "secret-gem-key-123", "OPENAI_API_KEY": "secret-oai-key-456"}):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "mock_gemini_test_token_fixture", "OPENAI_API_KEY": "mock_openai_test_token_fixture"}):
             gw = ModelGateway()
         # The gateway has _gemini_key and _openai_key as private attributes
         # Verify they exist but verify that the public query() doesn't leak them
         public_attrs = {k: v for k, v in gw.__dict__.items() if not k.startswith("_")}
         for attr_name, attr_val in public_attrs.items():
-            self.assertNotIn("secret-gem-key-123", str(attr_val))
-            self.assertNotIn("secret-oai-key-456", str(attr_val))
+            self.assertNotIn("mock_gemini_test_token_fixture", str(attr_val))
+            self.assertNotIn("mock_openai_test_token_fixture", str(attr_val))
         print("  PASS [N2] Keys not in gateway public attributes")
 
 
