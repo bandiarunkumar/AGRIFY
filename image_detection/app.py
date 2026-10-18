@@ -225,7 +225,7 @@ def predict_disease():
         except Exception:
             return jsonify({"status": "error", "error": "The uploaded file is not a readable image."}), 400
 
-        predictions = model.predict(img_array, verbose=0)[0]
+        predictions = model(img_array, training=False).numpy()[0]
         max_conf = float(np.max(predictions))
         
         # If the model is not confident, it's likely not a potato leaf
