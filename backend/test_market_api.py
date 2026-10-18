@@ -1,55 +1,80 @@
+"""
+Live Integration Test: Market Prices API against running local server.
+Opt-in via RUN_LIVE_INTEGRATION_TESTS=1 or direct execution (python test_market_api.py).
+Safe for unittest discovery with zero import-time side effects.
+"""
+import os
+import unittest
 import requests
-import json
 
-# Test the updated market API
-print("=== TEST: Tomato in Telangana ===")
-try:
-    r = requests.post(
-        'http://127.0.0.1:5000/api/market-prices',
-        json={'crop': 'tomato', 'state': 'Telangana'},
-        timeout=30,
-    )
-    data = r.json()
-    print(f"Status: {r.status_code}")
-    print(f"Markets returned: {len(data.get('markets', []))}")
-    print(f"Total reporting: {data.get('total_markets_reporting')}")
-    print(f"Data quality: {data.get('data_quality')}")
-    print(f"Is fallback: {data.get('is_fallback')}")
-    print(f"Avg price/kg: {data.get('avg_price_per_kg')}")
-    print(f"Best market: {data.get('best_market')}")
-    print(f"Source: {data.get('source_name')}")
+LIVE_INTEGRATION_ENABLED = os.getenv("RUN_LIVE_INTEGRATION_TESTS", "").lower() in ("1", "true", "yes")
 
-    # Show first 5 markets
-    for i, m in enumerate(data.get('markets', [])[:8]):
-        print(f"  {i+1}. {m['name']} ({m['district']}) - ₹{m['price_per_kg']}/kg | ₹{m['price_per_quintal']}/q")
-except Exception as e:
-    print(f"Error: {e}")
 
-print("\n=== TEST: Tomato in Hyderabad district ===")
-try:
-    r2 = requests.post(
-        'http://127.0.0.1:5000/api/market-prices',
-        json={'crop': 'tomato', 'state': 'Telangana', 'district': 'Hyderabad'},
-        timeout=30,
-    )
-    data2 = r2.json()
-    print(f"Markets returned: {len(data2.get('markets', []))}")
-    for m in data2.get('markets', []):
-        print(f"  {m['name']} ({m['district']}) - ₹{m['price_per_kg']}/kg")
-except Exception as e:
-    print(f"Error: {e}")
+@unittest.skipUnless(LIVE_INTEGRATION_ENABLED, "Live integration tests disabled by default (set RUN_LIVE_INTEGRATION_TESTS=1)")
+class TestLiveMarketAPI(unittest.TestCase):
+    """Explicitly opt-in integration tests against a running backend server."""
 
-print("\n=== TEST: Cotton in Telangana ===")
-try:
-    r3 = requests.post(
-        'http://127.0.0.1:5000/api/market-prices',
-        json={'crop': 'cotton', 'state': 'Telangana'},
-        timeout=30,
-    )
-    data3 = r3.json()
-    print(f"Markets returned: {len(data3.get('markets', []))}")
-    print(f"Avg price/kg: {data3.get('avg_price_per_kg')}")
-    for m in data3.get('markets', [])[:5]:
-        print(f"  {m['name']} ({m['district']}) - ₹{m['price_per_kg']}/kg")
-except Exception as e:
-    print(f"Error: {e}")
+    def test_tomato_telangana(self):
+        try:
+            r = requests.post(
+                'http://127.0.0.1:5000/api/market-prices',
+                json={'crop': 'tomato', 'state': 'Telangana'},
+                timeout=10,
+            )
+            self.assertEqual(r.status_code, 200)
+            data = r.json()
+            self.assertIn("markets", data)
+        except requests.exceptions.RequestException as e:
+            self.skipTest(f"Live server at http://127.0.0.1:5000 is not reachable: {e}")
+
+    def test_tomato_hyderabad_district(self):
+        try:
+            r = requests.post(
+                'http://127.0.0.1:5000/api/market-prices',
+                json={'crop': 'tomato', 'state': 'Telangana', 'district': 'Hyderabad'},
+                timeout=10,
+            )
+            self.assertEqual(r.status_code, 200)
+            data = r.json()
+            self.assertIn("markets", data)
+        except requests.exceptions.RequestException as e:
+            self.skipTest(f"Live server at http://127.0.0.1:5000 is not reachable: {e}")
+
+    def test_cotton_telangana(self):
+        try:
+            r = requests.post(
+                'http://127.0.0.1:5000/api/market-prices',
+                json={'crop': 'cotton', 'state': 'Telangana'},
+                timeout=10,
+            )
+            self.assertEqual(r.status_code, 200)
+            data = r.json()
+            self.assertIn("markets", data)
+        except requests.exceptions.RequestException as e:
+            self.skipTest(f"Live server at http://127.0.0.1:5000 is not reachable: {e}")
+
+
+def _run_cli_demo():
+    print("=== LIVE INTEGRATION TEST: Market API (http://127.0.0.1:5000) ===")
+    for crop, state, district in [
+        ('tomato', 'Telangana', None),
+        ('tomato', 'Telangana', 'Hyderabad'),
+        ('cotton', 'Telangana', None),
+    ]:
+        payload = {'crop': crop, 'state': state}
+        if district:
+            payload['district'] = district
+        label = f"{crop} in {state}" + (f" ({district})" if district else "")
+        print(f"\n--- Testing: {label} ---")
+        try:
+            r = requests.post('http://127.0.0.1:5000/api/market-prices', json=payload, timeout=10)
+            data = r.json()
+            print(f"Status: {r.status_code}")
+            print(f"Markets returned: {len(data.get('markets', []))}")
+            print(f"Avg price/kg: ₹{data.get('avg_price_per_kg')}/kg")
+        except Exception as e:
+            print(f"Error connecting to backend: {e}")
+
+
+if __name__ == '__main__':
+    _run_cli_demo()

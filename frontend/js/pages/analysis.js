@@ -2,7 +2,7 @@
 // AGRIFY Farm Intelligence Analyzer — Precision Planning Workflow
 // ============================================================
 
-import { analyzeFarm, getSoilByCoords, getWeatherByCoords, predictCrop, predictFertilizer, getSoilAnalysis, getCurrentPosition, reverseGeocode } from '../api.js';
+import { analyzeFarm, getFarmActionPlan, getSoilByCoords, getWeatherByCoords, getSoilAnalysis, getCurrentPosition, reverseGeocode } from '../api.js';
 import { showToast, setupMicButtons } from '../voice.js';
 import { t } from '../i18n.js';
 import {
@@ -32,12 +32,12 @@ export function renderAnalysis() {
         </div>
         <h1 class="analysis-title">🌱 Farm Intelligence Analyzer</h1>
         <p class="analysis-subtitle">
-          Precision crop, soil, and nutrient advisory powered by real-time GPS coordinates, satellite soil telemetry, and microclimate forecasting.
+          Crop and nutrient guidance using your farm coordinates, SoilGrids modeled layers where available, and weather feeds when available.
         </p>
         <div class="analysis-trust-strip">
           <span class="trust-pill"><span class="pill-icon">📍</span> GPS Micro-Targeting</span>
-          <span class="trust-pill"><span class="pill-icon">🛰️</span> Satellite Soil Telemetry</span>
-          <span class="trust-pill"><span class="pill-icon">🌤️</span> Live Microclimate Forecast</span>
+          <span class="trust-pill"><span class="pill-icon">🧪</span> Modeled Soil Estimates</span>
+          <span class="trust-pill"><span class="pill-icon">🌤️</span> Weather When Available</span>
           <span class="trust-pill"><span class="pill-icon">🧠</span> Agronomic AI Suitability</span>
         </div>
       </div>
@@ -69,13 +69,13 @@ export function renderAnalysis() {
               <div class="step-badge">STEP 1 OF 3</div>
               <h3 class="section-title"><span class="icon">📍</span> Farm Location & Boundaries</h3>
               <p class="step-card-subtitle">
-                Acquire precision GPS coordinates for your field. Real-time satellite soil and microclimate models are indexed to exact geographical coordinates rather than generic municipal boundaries.
+                Acquire GPS coordinates for your field. Available weather and SoilGrids data are linked to the coordinates rather than a municipal average.
               </p>
             </div>
 
             <!-- GPS Primary Button & Telemetry Panel -->
             <div class="gps-capture-panel">
-              <div class="gps-hero-badge">🛰️ Precision Satellite Targeting</div>
+              <div class="gps-hero-badge">📍 GPS Coordinates</div>
               <h4 class="gps-hero-title">Automated Field Geolocation</h4>
               <p class="gps-hero-desc">
                 Use your device's GPS to acquire coordinates. Weather and soil profiles will be synthesized for your exact farm parcel.
@@ -92,7 +92,7 @@ export function renderAnalysis() {
                 <div class="radar-scan-grid"></div>
                 <div class="radar-sweep-beam"></div>
                 <div class="radar-center-blip"></div>
-                <div class="radar-status-msg">🛰️ Aligning with Earth Observation Satellites...</div>
+                <div class="radar-status-msg">📍 Waiting for farm coordinates...</div>
               </div>
 
               <!-- Live Map iframe Container -->
@@ -105,7 +105,7 @@ export function renderAnalysis() {
             <div id="gps-result" style="display:none;" class="card card-sm gps-result-card">
               <div class="gps-result-header">
                 <span class="status-pill success">✅ Geolocation Coordinates Locked</span>
-                <span class="gps-coord-preview">Live GPS Telemetry</span>
+                <span class="gps-coord-preview">GPS Location</span>
               </div>
               <div class="grid-2">
                 <div class="metric-row">
@@ -259,7 +259,7 @@ export function renderAnalysis() {
                 <input type="number" class="form-input" id="w-yield-last" value="4000" min="0" />
               </div>
               <div class="form-group">
-                <label for="w-annual-rain">Annual Rainfall <span class="hint">(mm, leave 0 to use live data)</span></label>
+                <label for="w-annual-rain">Annual Rainfall <span class="hint">(mm, leave 0 to use available inputs or regional estimates)</span></label>
                 <input type="number" class="form-input" id="w-annual-rain" value="0" min="0" placeholder="0 = auto from weather" />
               </div>
             </div>
@@ -278,16 +278,16 @@ export function renderAnalysis() {
               <div class="step-badge">STEP 3 OF 3</div>
               <h3 class="section-title"><span class="icon">🧪</span> Soil Telemetry & Laboratory Data</h3>
               <p class="step-card-subtitle">
-                Soil chemistry determines crop vitality and nutrient uptake. Fetch satellite soil telemetry with one click, or enter lab measurements from your local Krishi Vigyan Kendra (KVK) card.
+                Soil chemistry affects crop growth. Fetch modeled SoilGrids layers where available, or enter laboratory measurements from your local Krishi Vigyan Kendra (KVK) card.
               </p>
             </div>
 
             <!-- Auto-fetch soil button -->
             <div class="satellite-fetch-banner">
-              <div class="banner-badge">🛰️ EARTH OBSERVATION SATELLITE</div>
-              <div class="banner-title">Auto-Fetch Satellite Soil Data</div>
+              <div class="banner-badge">🧪 SOILGRIDS MODEL</div>
+              <div class="banner-title">Fetch Modeled Soil Data</div>
               <p class="banner-desc">
-                Pulls real-time satellite spectral reflectance estimates for soil NPK, pH, moisture, and carbon at your farm coordinates.
+                Fetches SoilGrids modeled soil layers where available. Phosphorus, potassium, moisture, and some nutrient fields are estimates, not laboratory measurements.
               </p>
               <div class="banner-actions">
                 <button class="btn btn-secondary" id="fetch-soil-btn">📡 Fetch Soil Data</button>
@@ -382,6 +382,19 @@ export function initAnalysis() {
     farmData.area_acres = parseFloat(document.getElementById('w-acres')?.value) || 5;
     farmData.farmer_name = document.getElementById('w-farmer-name')?.value || '';
 
+    // Publish session-level AGRIFY location context
+    if (typeof window !== 'undefined' && Number.isFinite(lat) && Number.isFinite(lon)) {
+      const locSnapshot = {
+        latitude: lat,
+        longitude: lon,
+        ...(farmData.geo && typeof farmData.geo === 'object' ? farmData.geo : {}),
+      };
+      window._agrifyLocation = locSnapshot;
+      try {
+        sessionStorage.setItem('agrify_session_location', JSON.stringify(locSnapshot));
+      } catch (_) {}
+    }
+
     goToStep(2);
   });
 
@@ -465,6 +478,19 @@ async function captureGPS() {
       status.textContent = `GPS: ${pos.lat.toFixed(4)}, ${pos.lon.toFixed(4)}`;
     }
 
+    // Publish session-level AGRIFY location context immediately upon capture
+    if (typeof window !== 'undefined' && Number.isFinite(pos.lat) && Number.isFinite(pos.lon)) {
+      const locSnapshot = {
+        latitude: pos.lat,
+        longitude: pos.lon,
+        ...(farmData.geo && typeof farmData.geo === 'object' ? farmData.geo : {}),
+      };
+      window._agrifyLocation = locSnapshot;
+      try {
+        sessionStorage.setItem('agrify_session_location', JSON.stringify(locSnapshot));
+      } catch (_) {}
+    }
+
   } catch (err) {
     showToast(err.message, 'error');
     status.textContent = '❌ ' + err.message;
@@ -487,7 +513,7 @@ async function fetchSoilData() {
     return;
   }
 
-  btn.textContent = '⌛ Fetching satellite soil data...';
+      btn.textContent = '⌛ Fetching modeled soil data...';
   btn.disabled = true;
   status.textContent = `Fetching soil data for ${farmData.lat.toFixed(4)}, ${farmData.lon.toFixed(4)}...`;
 
@@ -512,17 +538,18 @@ async function fetchSoilData() {
 
       farmData.soil_from_api = soil;
 
-      const qualityLabel = soil.fallback ? '⚠️ Regional estimate (satellite unavailable)' : '✅ Satellite soil data loaded';
+      const estimated = soil.data_quality === 'estimated' || soil.fallback;
+      const qualityLabel = estimated ? '⚠️ Modeled estimate — confirm with a soil lab' : '✅ Soil data loaded';
       noteDiv.innerHTML = `
         <div class="soil-note-badge ${soil.fallback ? 'warning' : 'success'}">${qualityLabel}</div>
       `;
 
-      status.textContent = soil.fallback ? '⚠️ Regional estimate used' : '✅ Loaded';
+      status.textContent = estimated ? '⚠️ Modeled estimate loaded' : '✅ Loaded';
       showToast(
-        soil.fallback
-          ? '⚠️ Satellite data unavailable — using regional estimates'
+        estimated
+          ? '⚠️ Soil data are modeled estimates; use a lab report for field-specific accuracy.'
           : `✅ Soil data loaded for (${farmData.lat.toFixed(3)}, ${farmData.lon.toFixed(3)})`,
-        soil.fallback ? 'warning' : 'success'
+        estimated ? 'warning' : 'success'
       );
     } else {
       status.textContent = '❌ Failed';
@@ -641,7 +668,7 @@ async function submitAnalysis() {
       <div class="loading-heading">Generating AI Farm Intelligence</div>
       <div class="loading-subheading">🌐 Fetching live weather & microclimate for your coordinates...</div>
       <div class="loading-footnote">
-        Synthesizing meteorological streams, satellite soil telemetry, and predictive crop suitability models.
+        Preparing available weather and modeled soil inputs for crop suitability ranking.
       </div>
       <div class="loading-pills-row">
         <span class="loading-pill active">📍 Location Synchronized</span>
@@ -654,6 +681,32 @@ async function submitAnalysis() {
 
   try {
     const result = await analyzeFarm(payload);
+    // Voice Copilot reads this shared in-memory snapshot when it builds the
+    // existing /api/assistant/query context.  Only publish coordinates after
+    // Farm Analyzer has successfully completed with coordinates the farmer
+    // explicitly captured or entered here; Voice Copilot never requests GPS.
+    if (typeof window !== 'undefined' && Number.isFinite(payload.latitude) && Number.isFinite(payload.longitude)) {
+      const analysisLocation = result.location && typeof result.location === 'object'
+        ? result.location
+        : {};
+
+      window._agrifyAnalysisData = {
+        ...result,
+        request: {
+          ...payload,
+          active_crop: result.crop_recommendation?.top_3?.[0]?.crop || payload.previous_crop,
+        },
+        location: {
+          ...analysisLocation,
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+        },
+      };
+      window._agrifyLocation = window._agrifyAnalysisData.location;
+      try {
+        sessionStorage.setItem('agrify_session_location', JSON.stringify(window._agrifyLocation));
+      } catch (_) {}
+    }
     renderResults(result, payload);
   } catch (err) {
     resultsEl.innerHTML = `
@@ -686,8 +739,22 @@ async function renderResults(result, payload) {
   const irr = result.irrigation_guidance || {};
   const alerts = result.alerts || [];
   const acres = payload.area_acres || 5;
+  const recommendationQuality = result.crop_recommendation?.data_quality || 'estimated';
+  const recommendationNote = result.crop_recommendation?.data_quality_note || 'Some inputs are modeled or unavailable. Treat recommendations as preliminary.';
+  const climateContext = weather.ok
+    ? `Weather feed returned ${weather.temperature}°C and ${weather.humidity}% humidity.`
+    : 'Weather data was unavailable; regional fallback values were used for ranking.';
 
   let html = '';
+
+  if (recommendationQuality !== 'live') {
+    html += `
+      <div class="card" role="note" style="margin-bottom:var(--sp-lg);border-color:var(--c-accent);">
+        <strong>Preliminary recommendation · ${recommendationQuality}</strong>
+        <p style="margin:.4rem 0 0;color:var(--c-text-secondary);">${recommendationNote}</p>
+      </div>
+    `;
+  }
 
   // ---- TOP SUMMARY STRIP ----
   html += `
@@ -705,8 +772,8 @@ async function renderResults(result, payload) {
         <span class="meta-strip-value">${acres} Acres</span>
       </div>
       <div class="meta-strip-item">
-        <span class="meta-strip-label">🤖 Intelligence Mode</span>
-        <span class="meta-strip-value"><span class="badge-dot"></span> AGRIFY AI Engine</span>
+        <span class="meta-strip-label">🤖 Recommendation Method</span>
+        <span class="meta-strip-value"><span class="badge-dot"></span> Hybrid rule + model ranking</span>
       </div>
     </div>
   `;
@@ -741,7 +808,7 @@ async function renderResults(result, payload) {
         <div class="section-header-wrap">
           <h3 class="section-title"><span class="icon">🌾</span> Top Crop Recommendations</h3>
           <div class="section-context-desc">
-            Calibrated for live microclimate (${weather.temperature}°C, ${weather.humidity}% humidity), satellite soil telemetry, and ${payload.season} season.
+            ${climateContext} Ranked using the available soil inputs and ${payload.season} season.
           </div>
         </div>
         <div class="grid-3">
@@ -784,7 +851,7 @@ async function renderResults(result, payload) {
               <span class="metric-value font-sm">${harvName}</span>
             </div>
             <div class="metric-row">
-              <span class="metric-label">Estimated Profit</span>
+              <span class="metric-label">Illustrative Profit · Not a Forecast</span>
               <span class="metric-value profit">₹${(crop.net_profit_estimated || 0).toLocaleString()}</span>
             </div>
           </div>
@@ -795,11 +862,11 @@ async function renderResults(result, payload) {
     html += `</div></div>`;
   }
 
-  // ---- LIVE DATA SUMMARY GRID ----
+  // ---- AVAILABLE DATA SUMMARY ----
   html += `
     <div class="grid-2 analysis-summary-grid" style="margin-bottom:var(--sp-xl);">
       <div class="card">
-        <h3 class="section-title"><span class="icon">📍</span> Location & Live Microclimate</h3>
+        <h3 class="section-title"><span class="icon">📍</span> Location & Weather</h3>
         ${geo.village || geo.district ? `
         <div class="metric-row">
           <span class="metric-label">Location</span>
@@ -812,19 +879,19 @@ async function renderResults(result, payload) {
         </div>
         <div class="metric-row">
           <span class="metric-label">Temperature</span>
-          <span class="metric-value">${weather.temperature}°C (feels ${weather.feels_like}°C)</span>
+          <span class="metric-value">${weather.ok ? `${weather.temperature}°C (feels ${weather.feels_like}°C)` : 'Unavailable'}</span>
         </div>
         <div class="metric-row">
           <span class="metric-label">Humidity</span>
-          <span class="metric-value">${weather.humidity}%</span>
+          <span class="metric-value">${weather.ok ? `${weather.humidity}%` : 'Unavailable'}</span>
         </div>
         <div class="metric-row">
           <span class="metric-label">Weather</span>
-          <span class="metric-value">${await translateDynamicText((weather.description || '—'), lang)}</span>
+          <span class="metric-value">${weather.ok ? await translateDynamicText((weather.description || '—'), lang) : 'Unavailable'}</span>
         </div>
         <div class="metric-row">
           <span class="metric-label">Wind</span>
-          <span class="metric-value">${weather.wind_speed} m/s</span>
+          <span class="metric-value">${weather.ok ? `${weather.wind_speed} m/s` : 'Unavailable'}</span>
         </div>
       </div>
 
@@ -1013,7 +1080,7 @@ async function renderResults(result, payload) {
                 <th>Water Need</th>
                 <th>Duration</th>
                 <th>Price/kg</th>
-                <th>Profit Est.</th>
+                <th>Illustrative Profit Est.</th>
               </tr>
             </thead>
             <tbody>
@@ -1033,7 +1100,7 @@ async function renderResults(result, payload) {
                   <td>${crop.water_need}</td>
                   <td>${crop.duration_days}d</td>
                   <td>₹${crop.price_per_kg}/kg</td>
-                  <td style="color:var(--c-success);">₹${(crop.net_profit_estimated || 0).toLocaleString()}</td>
+                  <td style="color:var(--c-success);" aria-label="Illustrative profit estimate">₹${(crop.net_profit_estimated || 0).toLocaleString()}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1042,6 +1109,31 @@ async function renderResults(result, payload) {
       </div>
     `;
   }
+
+  // ============================================================
+  // 📋 AI FARM ACTION PLAN (Async Non-Blocking Workspace)
+  // ============================================================
+  html += `
+    <div id="farm-action-plan-section" style="margin-bottom:var(--sp-xl);">
+      <div class="card action-plan-card action-plan-loading">
+        <div class="action-plan-header">
+          <div class="action-plan-heading-group">
+            <span class="action-plan-badge">🌱 AGRIFY ADVISORY WORKSPACE</span>
+            <h3 class="action-plan-title">📋 7-Day Farm Action Plan</h3>
+          </div>
+          <span class="action-plan-source-badge pulse">⏳ Synthesizing Plan...</span>
+        </div>
+        <p class="action-plan-loading-text">
+          Synthesizing your field's live weather telemetry, soil nutrition, irrigation schedule, and active field alerts into prioritized daily actions.
+        </p>
+        <div class="action-plan-skeleton-bars">
+          <div class="skeleton-line" style="height:14px;width:75%;margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="height:12px;width:90%;margin-bottom:8px;"></div>
+          <div class="skeleton-line" style="height:12px;width:60%;"></div>
+        </div>
+      </div>
+    </div>
+  `;
 
   // ============================================================
   // 📊 DATA VISUALIZATION DASHBOARD
@@ -1089,7 +1181,7 @@ async function renderResults(result, payload) {
         </div>
         <div class="viz-insight">
           <span class="viz-insight-icon">💡</span>
-          <span>Temperature: ${weather.temperature}°C · Humidity: ${weather.humidity}% · Wind: ${weather.wind_speed} m/s</span>
+          <span>${weather.ok ? `Weather feed: ${weather.temperature}°C · ${weather.humidity}% humidity · ${weather.wind_speed} m/s wind` : 'Weather feed unavailable; regional fallback values were used for crop ranking.'}</span>
         </div>
       </div>
     </div>
@@ -1117,14 +1209,14 @@ async function renderResults(result, payload) {
   if (top3.length > 0) {
     html += `
       <div class="card viz-card" style="margin-bottom:var(--sp-xl);">
-        <h3 class="section-title"><span class="icon">💰</span> Profit & Revenue Analysis</h3>
-        <p class="viz-desc">Comparative financial analysis — Revenue (blue), Cost (red), and Net Profit trend (green line) for recommended crops</p>
+        <h3 class="section-title"><span class="icon">💰</span> Illustrative Profit & Revenue Estimates</h3>
+        <p class="viz-desc">Comparative estimates based on reference crop prices and yields, not current mandi prices or a farm-specific profit forecast.</p>
         <div class="chart-container" style="position:relative;height:340px;">
           <canvas id="chart-profit"></canvas>
         </div>
         <div class="viz-insight">
           <span class="viz-insight-icon">📈</span>
-          <span>The green line shows net profit trend. Higher green line = more profitable crop for your farm.</span>
+          <span>The green line shows the reference estimate. Actual yields, costs, and selling prices will vary.</span>
         </div>
       </div>
     `;
@@ -1135,7 +1227,7 @@ async function renderResults(result, payload) {
     html += `
       <div class="card viz-card" style="margin-bottom:var(--sp-xl);">
         <h3 class="section-title"><span class="icon">🫧</span> Crop Intelligence Bubble Map</h3>
-        <p class="viz-desc">Each bubble = one crop. X-axis = growing duration, Y-axis = suitability score, Bubble size = profit potential</p>
+        <p class="viz-desc">Each bubble = one crop. X-axis = growing duration, Y-axis = suitability score, and size = illustrative reference profit estimate.</p>
         <div class="chart-container" style="position:relative;height:360px;">
           <canvas id="chart-crop-bubble"></canvas>
         </div>
@@ -1269,5 +1361,230 @@ async function renderResults(result, payload) {
     farmData = {};
     goToStep(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // Asynchronously trigger Action Plan generation without blocking charts or page render
+  loadFarmActionPlan(result, payload);
+}
+
+// ============================================================
+// 📋 FARM ACTION PLAN HELPERS
+// ============================================================
+let currentAnalysisContext = null;
+
+async function loadFarmActionPlan(result, payload) {
+  currentAnalysisContext = { result, payload };
+  const container = document.getElementById('farm-action-plan-section');
+  if (!container) return;
+
+  const rawLang = window.localStorage.getItem('lang') || 'en';
+  const lang = ['en', 'te', 'hi'].includes(rawLang) ? rawLang : 'en';
+  const targetCrop = result?.crop_recommendation?.top_3?.[0]?.crop || payload?.previous_crop || 'Crop';
+
+  try {
+    const plan = await getFarmActionPlan({
+      analysis: result,
+      crop: targetCrop,
+      language: lang,
+    });
+
+    if (plan && plan.status === 'success') {
+      renderActionPlanUI(plan, container, result, payload);
+    } else {
+      renderActionPlanFallbackUI(container, result, payload);
+    }
+  } catch (err) {
+    console.warn('Action plan non-blocking fetch error:', err);
+    renderActionPlanFallbackUI(container, result, payload);
+  }
+}
+
+function renderActionPlanUI(plan, container, result, payload) {
+  const isGemini = plan.source === 'gemini_ai';
+  const sourceLabel = isGemini ? '✨ AGRIFY AI' : '⚙️ AGRIFY Rule Engine';
+  const sourceClass = isGemini ? 'gemini' : 'rule';
+
+  const immediateActions = plan.immediate_actions || [];
+  const weekPlan = plan.this_week_plan || [];
+  const keyRisks = plan.key_risks || [];
+  const expertQuestions = plan.expert_questions || [];
+
+  let immediateHtml = '';
+  if (immediateActions.length > 0) {
+    immediateHtml = `
+      <div class="action-plan-subsection">
+        <h4 class="action-plan-section-title">⚡ Immediate Priority Actions</h4>
+        <div class="action-plan-immediate-grid">
+          ${immediateActions.map(act => {
+            const prio = (act.priority || 'medium').toLowerCase();
+            const prioClass = prio === 'high' ? 'high' : (prio === 'low' ? 'low' : 'medium');
+            return `
+              <div class="action-item-card priority-${prioClass}">
+                <div class="action-item-top">
+                  <span class="action-category-tag">${act.category || 'Advisory'}</span>
+                  <span class="priority-pill ${prioClass}">${prio.toUpperCase()} PRIORITY</span>
+                </div>
+                <div class="action-item-title">${act.title}</div>
+                <div class="action-item-text">${act.action}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  let scheduleHtml = '';
+  if (weekPlan.length > 0) {
+    scheduleHtml = `
+      <div class="action-plan-subsection" style="margin-top:var(--sp-xl);">
+        <h4 class="action-plan-section-title">📅 7-Day Advisory Schedule</h4>
+        <div class="action-plan-timeline">
+          ${weekPlan.map((step, idx) => `
+            <div class="timeline-step-card">
+              <div class="timeline-step-header">
+                <span class="timeline-period-badge">${step.period || `Phase ${idx+1}`}</span>
+                <span class="timeline-focus-title">${step.focus || ''}</span>
+              </div>
+              <ul class="timeline-task-list">
+                ${(step.tasks || []).map(task => `
+                  <li class="timeline-task-item">
+                    <span class="timeline-check-icon">✓</span>
+                    <span>${task}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  let risksHtml = '';
+  if (keyRisks.length > 0) {
+    risksHtml = `
+      <div class="action-plan-subsection" style="margin-top:var(--sp-xl);">
+        <h4 class="action-plan-section-title">⚠️ Field Risk & Mitigation</h4>
+        <div class="action-plan-risks-grid">
+          ${keyRisks.map(r => `
+            <div class="action-risk-card severity-${r.severity || 'warning'}">
+              <div class="risk-card-title">⚠️ ${r.risk}</div>
+              <div class="risk-card-mitigation"><span class="mitigation-label">Mitigation:</span> ${r.mitigation}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  let expertsHtml = '';
+  if (expertQuestions.length > 0) {
+    expertsHtml = `
+      <div class="action-plan-expert-card">
+        <div class="expert-card-top">
+          <div>
+            <div class="expert-card-badge">👨‍🌾 KVK & EXTENSION ESCALATION</div>
+            <h4 class="expert-card-title">Questions to Discuss With an Agriculture Expert</h4>
+            <p class="expert-card-subtext">
+              These targeted questions are formulated from your field telemetry and nutrient analysis for consultation with your local Krishi Vigyan Kendra (KVK) specialist or Agriculture Extension Officer.
+            </p>
+          </div>
+          <button class="btn btn-sm btn-outline-primary btn-expert-cta" id="action-plan-experts-btn">
+            👨‍🌾 Browse Expert Directory →
+          </button>
+        </div>
+        <div class="expert-questions-list">
+          ${expertQuestions.map(q => `
+            <div class="expert-question-item">
+              <span class="expert-q-icon">💬</span>
+              <span class="expert-q-text">${q}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  const disclaimerHtml = `
+    <div class="action-plan-disclaimer">
+      <span class="disclaimer-icon">🛡️</span>
+      <span>${plan.disclaimer || 'This Action Plan is an advisory guide based on available weather and modeled soil inputs. It does not guarantee specific yields or profits. Verify with your local agriculture extension officer.'}</span>
+    </div>
+  `;
+
+  container.innerHTML = `
+    <div class="card action-plan-card">
+      <div class="action-plan-header">
+        <div class="action-plan-heading-group">
+          <span class="action-plan-badge">🌱 AGRIFY ADVISORY WORKSPACE</span>
+          <h3 class="action-plan-title">📋 7-Day Farm Action Plan</h3>
+        </div>
+        <span class="action-plan-source-badge ${sourceClass}">${sourceLabel}</span>
+      </div>
+
+      <div class="action-plan-summary">
+        <span class="summary-icon">💡</span>
+        <div class="summary-text">${plan.summary}</div>
+      </div>
+
+      ${immediateHtml}
+      ${scheduleHtml}
+      ${risksHtml}
+      ${expertsHtml}
+      ${disclaimerHtml}
+    </div>
+  `;
+
+  // Attach event listener to expert directory CTA button
+  container.querySelector('#action-plan-experts-btn')?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('navigate', { detail: 'experts' }));
+  });
+}
+
+function renderActionPlanFallbackUI(container, result, payload) {
+  container.innerHTML = `
+    <div class="card action-plan-card action-plan-fallback">
+      <div class="action-plan-header">
+        <div class="action-plan-heading-group">
+          <span class="action-plan-badge">📋 AGRIFY ADVISORY</span>
+          <h3 class="action-plan-title">📋 7-Day Farm Action Plan</h3>
+        </div>
+        <span class="action-plan-source-badge fallback">⚠️ Advisory Preview Offline</span>
+      </div>
+      <p class="action-plan-fallback-text" style="font-size:0.86rem;color:var(--c-text-muted);margin:var(--sp-sm) 0 var(--sp-md);">
+        Unable to generate the automated 7-day action schedule right now. Your crop recommendations, fertilizer analysis, and irrigation guidance above are active and complete.
+      </p>
+      <button class="btn btn-sm btn-secondary" id="retry-action-plan-btn">
+        🔄 Retry Action Plan
+      </button>
+    </div>
+  `;
+
+  container.querySelector('#retry-action-plan-btn')?.addEventListener('click', () => {
+    container.innerHTML = `
+      <div class="card action-plan-card action-plan-loading">
+        <div class="action-plan-header">
+          <div class="action-plan-heading-group">
+            <span class="action-plan-badge">🌱 AGRIFY ADVISORY WORKSPACE</span>
+            <h3 class="action-plan-title">📋 7-Day Farm Action Plan</h3>
+          </div>
+          <span class="action-plan-source-badge pulse">⏳ Synthesizing Plan...</span>
+        </div>
+        <p class="action-plan-loading-text">
+          Retrying action plan synthesis for your farm coordinates...
+        </p>
+      </div>
+    `;
+    loadFarmActionPlan(result, payload);
+  });
+}
+
+// Listen for language changes to keep Action Plan updated dynamically
+if (typeof window !== 'undefined') {
+  window.addEventListener('langChange', () => {
+    if (currentAnalysisContext && document.getElementById('farm-action-plan-section')) {
+      loadFarmActionPlan(currentAnalysisContext.result, currentAnalysisContext.payload);
+    }
   });
 }

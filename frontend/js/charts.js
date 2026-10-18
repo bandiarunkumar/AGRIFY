@@ -32,6 +32,10 @@ const PALETTE = [
 // Active chart instances to destroy before re-creating
 const chartInstances = {};
 
+function chartAnimationDuration() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 440;
+}
+
 function destroyChart(id) {
   if (chartInstances[id]) {
     chartInstances[id].destroy();
@@ -172,7 +176,7 @@ export function createSoilRadarChart(canvasId, soilData) {
         }
       },
       animation: {
-        duration: 1200,
+        duration: chartAnimationDuration(),
         easing: 'easeOutQuart',
       }
     }
@@ -259,7 +263,7 @@ export function createCropSuitabilityChart(canvasId, crops) {
         }
       },
       animation: {
-        duration: 1000,
+        duration: chartAnimationDuration(),
         easing: 'easeOutCubic',
       }
     },
@@ -372,7 +376,7 @@ export function createProfitChart(canvasId, crops) {
           border: { display: false },
         }
       },
-      animation: { duration: 1200, easing: 'easeOutQuart' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutQuart' },
     }
   });
 }
@@ -578,7 +582,7 @@ export function createCropBubbleChart(canvasId, crops) {
           border: { display: false },
         }
       },
-      animation: { duration: 1400, easing: 'easeOutQuart' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutQuart' },
     }
   });
 }
@@ -661,7 +665,7 @@ export function createWeatherGaugeChart(canvasId, weather) {
           grid: { color: 'rgba(34, 197, 94, 0.08)' },
         }
       },
-      animation: { duration: 1200, easing: 'easeOutQuart' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutQuart' },
     }
   });
 }
@@ -749,7 +753,7 @@ export function createFertilizerStageChart(canvasId, stages) {
           border: { display: false },
         }
       },
-      animation: { duration: 1000, easing: 'easeOutCubic' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutCubic' },
     }
   });
 }
@@ -865,7 +869,7 @@ export function createMarketPriceChart(canvasId, markets, cropName) {
           border: { display: false },
         }
       },
-      animation: { duration: 1200, easing: 'easeOutCubic' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutCubic' },
     },
     plugins: [ChartDataLabels],
   });
@@ -981,7 +985,7 @@ export function createPriceDistributionChart(canvasId, markets, cropName) {
           border: { display: false },
         }
       },
-      animation: { duration: 1100, easing: 'easeOutQuart' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutQuart' },
     }
   });
 }
@@ -1042,7 +1046,7 @@ export function createMarketSharePieChart(canvasId, markets) {
           }
         }
       },
-      animation: { animateRotate: true, duration: 1400, easing: 'easeOutQuart' },
+      animation: { animateRotate: true, duration: chartAnimationDuration(), easing: 'easeOutQuart' },
     },
     plugins: [{
       id: 'centerText',
@@ -1141,7 +1145,7 @@ export function createMSPComparisonChart(canvasId, avgPrice, mspPrice, cropName)
           border: { display: false },
         }
       },
-      animation: { duration: 1000, easing: 'easeOutCubic' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutCubic' },
     },
     plugins: [ChartDataLabels],
   });

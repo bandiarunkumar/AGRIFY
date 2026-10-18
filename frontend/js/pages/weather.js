@@ -18,6 +18,9 @@ const WX_ICONS = {
 
 // Active chart instances for this page
 const weatherCharts = {};
+function chartAnimationDuration() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 440;
+}
 function destroyWeatherChart(id) {
   if (weatherCharts[id]) { weatherCharts[id].destroy(); delete weatherCharts[id]; }
 }
@@ -457,7 +460,7 @@ function renderTempChart(weather) {
           border: { display: false },
         }
       },
-      animation: { duration: 1000, easing: 'easeOutCubic' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutCubic' },
     },
     plugins: [ChartDataLabels],
   });
@@ -570,7 +573,7 @@ function renderForecastChart(days) {
           border: { display: false },
         }
       },
-      animation: { duration: 1400, easing: 'easeOutQuart' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutQuart' },
     }
   });
 }
@@ -674,7 +677,7 @@ function renderHumidityChart(days) {
           border: { display: false },
         }
       },
-      animation: { duration: 1100, easing: 'easeOutCubic' },
+      animation: { duration: chartAnimationDuration(), easing: 'easeOutCubic' },
     },
     plugins: [ChartDataLabels],
   });

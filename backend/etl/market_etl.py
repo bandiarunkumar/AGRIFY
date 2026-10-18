@@ -473,22 +473,27 @@ def _try_live_api(commodity_lower, state, district, limit):
 
 def _generate_fallback_response(commodity_lower, state, district):
     """
-    Generate comprehensive fallback response using the built-in mandi database.
-    Returns realistic, district-wise mandi prices for all Telangana mandis.
+    Return an explicit unavailable state when Agmarknet cannot be reached.
+    Reference prices and generated mandi rows are not current market observations.
     """
-    records = _generate_mandi_records(commodity_lower, state, district)
-
-    if not records:
-        # If still no records (unknown commodity), generate minimal fallback
-        return _bare_fallback(commodity_lower, state)
-
-    return _build_success_response(
-        commodity_lower, records,
-        source_name="agmarknet_data_gov_in",
-        data_quality="live",
-        note="Real-time mandi prices from Agmarknet (Ministry of Agriculture, Govt. of India). Prices are per quintal (100 kg) as reported by APMC markets.",
-        is_fallback=False,  # Present as live data to satisfy constraints
-    )
+    return {
+        "ok": True,
+        "fallback": True,
+        "fallback_reason": "live_market_data_unavailable",
+        "commodity": commodity_lower.replace("_", " ").title(),
+        "records": [],
+        "total_markets_reporting": 0,
+        "avg_price_per_kg": 0,
+        "min_price_per_kg": 0,
+        "max_price_per_kg": 0,
+        "avg_price_per_quintal": 0,
+        "best_market": None,
+        "source_name": "unavailable",
+        "source_url": "https://agmarknet.gov.in/",
+        "data_quality": "unavailable",
+        "data_quality_note": "Current Agmarknet prices could not be retrieved. No live prices are shown; please try again later.",
+        "fetch_timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 def _build_success_response(commodity_lower, all_records, source_name, data_quality, note, is_fallback=False):
@@ -527,11 +532,7 @@ def _build_success_response(commodity_lower, all_records, source_name, data_qual
 
 
 def _bare_fallback(commodity, state):
-    """Absolute last resort fallback for unknown commodities."""
-    from config import CROP_PRICES, VEGETABLE_PRICES
-    all_prices = {**CROP_PRICES, **{k: v["base"] for k, v in VEGETABLE_PRICES.items()}}
-    base_price = all_prices.get(commodity, 25)
-
+    """Unknown commodities have no verified price estimate."""
     return {
         "ok": True,
         "fallback": True,
@@ -539,21 +540,15 @@ def _bare_fallback(commodity, state):
         "commodity": commodity.replace("_", " ").title(),
         "records": [],
         "total_markets_reporting": 0,
-        "avg_price_per_kg": base_price,
-        "min_price_per_kg": round(base_price * 0.8, 2),
-        "max_price_per_kg": round(base_price * 1.3, 2),
-        "avg_price_per_quintal": base_price * 100,
-        "best_market": {
-            "name": "Reference estimate",
-            "state": state or "",
-            "district": "",
-            "modal_price_per_kg": base_price,
-            "modal_price_per_quintal": base_price * 100,
-        },
-        "source_name": "agmarknet_data_gov_in",
+        "avg_price_per_kg": 0,
+        "min_price_per_kg": 0,
+        "max_price_per_kg": 0,
+        "avg_price_per_quintal": 0,
+        "best_market": None,
+        "source_name": "unavailable",
         "source_url": "https://agmarknet.gov.in/",
-        "data_quality": "live",
-        "data_quality_note": "Real-time mandi prices from Agmarknet (Ministry of Agriculture, Govt. of India).",
+        "data_quality": "unavailable",
+        "data_quality_note": "No verified current price is available for this commodity.",
         "fetch_timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -633,22 +628,15 @@ def fetch_markets_for_state(state: str, limit: int = 50) -> dict:
             except Exception:
                 continue
 
-    # Fallback: Generate state data from mandi database
-    all_records = []
-    major_commodities = ["rice", "tomato", "onion", "cotton", "chilli", "maize", "groundnut", "chickpea"]
-    for comm in major_commodities:
-        recs = _generate_mandi_records(comm, state)
-        # Take just a few per commodity to keep the response manageable
-        all_records.extend(recs[:5])
-
+    # Do not fabricate current prices from the built-in reference table.
     return {
         "ok": True,
-        "fallback": False,
+        "fallback": True,
         "state": state,
-        "records": all_records,
-        "total": len(all_records),
-        "source_name": "agmarknet_data_gov_in",
-        "data_quality": "live",
-        "data_quality_note": "Real-time mandi prices from Agmarknet (Ministry of Agriculture, Govt. of India).",
+        "records": [],
+        "total": 0,
+        "source_name": "unavailable",
+        "data_quality": "unavailable",
+        "data_quality_note": "Current Agmarknet prices could not be retrieved. No live prices are shown; please try again later.",
         "fetch_timestamp": datetime.now(timezone.utc).isoformat(),
     }

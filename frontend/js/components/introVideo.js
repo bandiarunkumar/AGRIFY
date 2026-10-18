@@ -151,7 +151,7 @@ function updatePlayer() {
   const dots = container.querySelector('.iv-dots');
   if (dots) {
     dots.innerHTML = slides.map((_, i) =>
-      `<button class="iv-dot ${i === currentSlide ? 'active' : ''}" data-slide="${i}"></button>`
+      `<button class="iv-dot ${i === currentSlide ? 'active' : ''}" data-slide="${i}" type="button" aria-label="Go to tour slide ${i + 1}" ${i === currentSlide ? 'aria-current="step"' : ''}></button>`
     ).join('');
     dots.querySelectorAll('.iv-dot').forEach(d => {
       d.addEventListener('click', () => goToSlide(parseInt(d.dataset.slide)));
@@ -166,7 +166,7 @@ function updatePlayer() {
 
 export function renderIntroVideo() {
   const langBtns = Object.entries(LANG_LABELS).map(([k,v]) =>
-    `<button class="iv-lang-btn ${k === currentLang ? 'active' : ''}" data-lang="${k}">${v}</button>`
+    `<button class="iv-lang-btn ${k === currentLang ? 'active' : ''}" data-lang="${k}" type="button" aria-label="Play the tour in ${v}">${v}</button>`
   ).join('');
 
   return `
@@ -187,9 +187,9 @@ export function renderIntroVideo() {
         <div class="iv-controls">
           <div class="iv-progress"><div class="iv-progress-fill"></div></div>
           <div class="iv-ctrl-row">
-            <button class="iv-ctrl-btn iv-prev-btn">⏮️</button>
-            <button class="iv-ctrl-btn iv-play-btn">▶️</button>
-            <button class="iv-ctrl-btn iv-next-btn">⏭️</button>
+            <button class="iv-ctrl-btn iv-prev-btn" type="button" aria-label="Previous tour slide">⏮️</button>
+            <button class="iv-ctrl-btn iv-play-btn" type="button" aria-label="Play tour">▶️</button>
+            <button class="iv-ctrl-btn iv-next-btn" type="button" aria-label="Next tour slide">⏭️</button>
             <span class="iv-counter">1 / 9</span>
             <div class="iv-dots"></div>
           </div>

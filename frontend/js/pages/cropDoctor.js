@@ -7,75 +7,7 @@ import { predictDisease } from '../api.js';
 import { getLang } from '../i18n.js';
 import { showToast } from '../voice.js';
 
-// Detailed, real treatment database based on detected disease
-// Each entry has specific dosage, timing, prevention steps (NOT generic)
-const DISEASE_TREATMENT_DB = {
-  'Early Blight': {
-    severity: 'medium',
-    severityLabel: 'Moderate',
-    cause: 'Caused by Alternaria solani fungus. Spreads in warm (24–29°C), humid conditions with leaf wetness.',
-    symptoms: [
-      'Dark brown concentric ring spots on lower/older leaves',
-      'Yellowing around lesions, leaves dry and fall',
-      'Stems and tubers may also show sunken brown lesions',
-    ],
-    treatment: [
-      { step: 'Immediate Spray', detail: 'Mancozeb 75% WP — 2.5 g/litre of water. Spray on all foliage, cover undersides of leaves.' },
-      { step: 'Follow-up (7 days later)', detail: 'Chlorothalonil 75% WP — 2 g/litre. Repeat every 7–10 days if disease persists.' },
-      { step: 'Alternative Organic', detail: 'Trichoderma viride (10 g/litre) OR copper oxychloride 50% WP (3 g/litre).' },
-    ],
-    prevention: [
-      'Rotate crops every 2–3 years (avoid planting potato/tomato in same field)',
-      'Remove and destroy infected plant debris after harvest',
-      'Ensure adequate spacing (60×20 cm) for air circulation',
-      'Avoid overhead irrigation — use drip or furrow method',
-      'Treat seed tubers with Mancozeb dip (2.5 g/litre for 15 min) before planting',
-    ],
-    estimatedLoss: '20–40% yield loss if untreated. Early treatment can save 80% of the crop.',
-  },
-  'Late Blight': {
-    severity: 'high',
-    severityLabel: 'Severe — Act Immediately',
-    cause: 'Caused by Phytophthora infestans (water mold). Spreads VERY fast in cool (10–20°C), wet weather. Can destroy entire field in 7–10 days.',
-    symptoms: [
-      'Water-soaked dark green/brown patches on leaves, spreading rapidly',
-      'White fuzzy mold growth on leaf undersides (visible in morning dew)',
-      'Stems turn dark and collapse; tubers rot with foul smell',
-    ],
-    treatment: [
-      { step: 'URGENT First Spray', detail: 'Cymoxanil 8% + Mancozeb 64% WP (Curzate M8) — 3 g/litre. Spray immediately on all plants.' },
-      { step: 'Second Spray (5 days)', detail: 'Metalaxyl 8% + Mancozeb 64% WP (Ridomil Gold) — 2.5 g/litre. Cover ALL foliage.' },
-      { step: 'Copper Backup', detail: 'Bordeaux mixture (1%) OR copper hydroxide 77% WP (2 g/litre) as protective spray.' },
-      { step: 'Remove Infected Plants', detail: 'Pull out and BURN severely infected plants immediately. Do not compost them.' },
-    ],
-    prevention: [
-      'Plant certified disease-free seed tubers only',
-      'Use resistant varieties: Kufri Jyoti, Kufri Badshah, Kufri Girdhari',
-      'Avoid planting in low-lying, waterlogged areas',
-      'Destroy all volunteer potato plants (self-sown from previous season)',
-      'Prophylactic spray with Mancozeb if weather forecast shows continuous rain + cool temp',
-    ],
-    estimatedLoss: '80–100% crop loss if untreated! This is a crop emergency. Seek KVK help if widespread.',
-  },
-  'Healthy': {
-    severity: 'low',
-    severityLabel: 'No Disease Detected',
-    cause: 'Your plant leaf shows no signs of disease. The crop appears to be in good condition.',
-    symptoms: [],
-    treatment: [
-      { step: 'Continue Regular Care', detail: 'Maintain current watering schedule. Irrigate every 7–10 days depending on soil moisture.' },
-      { step: 'Scheduled Nutrition', detail: 'Apply 50 kg Urea/ha at 30 days after planting (earthing-up stage). Follow with 25 kg MOP/ha.' },
-      { step: 'Preventive Spray', detail: 'Prophylactic Mancozeb 2.5 g/litre spray every 15 days during monsoon to prevent fungal attack.' },
-    ],
-    prevention: [
-      'Monitor field daily for any yellowing or spots on lower leaves',
-      'Keep field weed-free — weeds harbor pests and compete for nutrients',
-      'Ensure proper drainage to prevent waterlogging',
-      'Install pheromone traps for potato tuber moth if in storage',
-    ],
-    estimatedLoss: 'No expected loss. Keep monitoring weekly for early signs of disease.',
-  },
-};
+// Crop Doctor predictions are limited to the potato classes listed below.
 
 export function renderCropDoctor() {
   return `
@@ -84,16 +16,16 @@ export function renderCropDoctor() {
       <div class="cd-hero-header">
         <div class="cd-badge">
           <span class="badge-dot"></span>
-          <span>AGRIFY VISION AI DIAGNOSTICS</span>
+          <span>POTATO LEAF IMAGE SCREENING</span>
         </div>
         <h1 class="cd-title">🔬 Crop Doctor & Foliar Pathology</h1>
         <p class="cd-subtitle">
-          Instant deep-learning leaf disease detection with chemical, biological, and preventive treatment protocols.
+          A model screening service for potato early blight, late blight, and healthy leaf classes. Results can be wrong; confirm field symptoms locally before treatment.
         </p>
         <div class="cd-trust-strip">
           <span class="trust-pill"><span class="pill-icon">🧠</span> Deep Learning Vision Model</span>
           <span class="trust-pill"><span class="pill-icon">📷</span> Field Macro & Live Camera Scan</span>
-          <span class="trust-pill"><span class="pill-icon">💊</span> Actionable Treatment Protocols</span>
+          <span class="trust-pill"><span class="pill-icon">💊</span> Confirm with a local expert</span>
           <span class="trust-pill"><span class="pill-icon">👨‍🌾</span> Integrated Agronomist Escalation</span>
         </div>
       </div>
@@ -111,13 +43,13 @@ export function renderCropDoctor() {
         </div>
 
         <!-- Upload Zone -->
-        <div class="upload-zone" id="upload-zone">
+        <div class="upload-zone" id="upload-zone" role="button" tabindex="0" aria-controls="leaf-input" aria-label="Choose a crop leaf photo">
           <div class="upload-icon-wrapper">
             <span class="upload-icon">📸</span>
           </div>
           <div class="upload-text">Click or drag a leaf photo here</div>
-          <div class="upload-hint">JPG, PNG — auto-compressed for rapid AI analysis</div>
-          <input type="file" id="leaf-input" accept="image/*" style="display:none;" />
+          <div class="upload-hint">JPG, PNG, WEBP — max 4.5 MB; auto-compressed before upload</div>
+          <input type="file" id="leaf-input" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" style="display:none;" />
         </div>
 
         <!-- Camera Zone -->
@@ -159,7 +91,7 @@ export function renderCropDoctor() {
             <div class="loading-heading">Vision AI Analyzing Leaf</div>
             <div class="loading-subheading">🔬 Scanning foliar tissue for disease patterns...</div>
             <div class="loading-footnote">
-              Evaluating lesion pigmentation, necroses, and texture against trained plant pathology models.
+              Checking this image against the supported potato classes. No diagnosis is shown if the service is unavailable.
             </div>
             <div class="loading-pills-row">
               <span class="loading-pill active">🌿 Foliar Segmentation</span>
@@ -252,6 +184,9 @@ export function initCropDoctor() {
 
   // ---- Upload Click ----
   uploadZone?.addEventListener('click', () => fileInput?.click());
+  uploadZone?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput?.click(); }
+  });
 
   // ---- Drag & Drop ----
   uploadZone?.addEventListener('dragover', (e) => {
@@ -275,6 +210,18 @@ export function initCropDoctor() {
   });
 
   function handleFileSelect(file) {
+    const supportedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!supportedTypes.has(file.type)) {
+      showToast('Upload a JPG, PNG, or WEBP image.', 'warning');
+      if (fileInput) fileInput.value = '';
+      return;
+    }
+    if (file.size > 4.5 * 1024 * 1024) {
+      showToast('Image must be 4.5 MB or smaller.', 'warning');
+      if (fileInput) fileInput.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       preview.src = e.target.result;
@@ -284,6 +231,7 @@ export function initCropDoctor() {
       actions.style.display = 'flex';
       resultDiv.style.display = 'none';
     };
+    reader.onerror = () => showToast('The selected image could not be read.', 'error');
     reader.readAsDataURL(file);
   }
 
@@ -356,6 +304,20 @@ export function initCropDoctor() {
     } catch (err) {
       loader.style.display = 'none';
       actions.style.display = 'flex';
+      resultDiv.style.display = 'block';
+      const card = document.getElementById('cd-result-card');
+      if (card) {
+        card.innerHTML = `
+          <div class="card cd-unrecognized-card" role="alert" style="text-align:center;padding:var(--sp-2xl);margin-bottom:var(--sp-xl);">
+            <div style="font-size:2.5rem;margin-bottom:var(--sp-md);">📡</div>
+            <h3 class="market-empty-title">Diagnosis unavailable</h3>
+            <p class="market-empty-desc" id="cd-error-message"></p>
+            <button class="btn btn-secondary btn-lg" id="cd-retry-analysis">Try this image again</button>
+          </div>
+        `;
+        card.querySelector('#cd-error-message').textContent = err.message;
+        card.querySelector('#cd-retry-analysis')?.addEventListener('click', () => analyzeImage(file));
+      }
       showToast(`Error: ${err.message}`, 'error');
     }
   }
@@ -385,38 +347,19 @@ export function initCropDoctor() {
     const scores = data.all_scores || [];
     const diseaseName = diag.name || 'Unknown';
 
-    // Get detailed treatment info from our local DB
-    const details = DISEASE_TREATMENT_DB[diseaseName] || DISEASE_TREATMENT_DB['Healthy'];
-    const sevColors = { low: 'var(--c-success)', medium: 'var(--c-accent)', high: '#ef4444' };
-    const sevBg = { low: 'rgba(34,197,94,0.08)', medium: 'rgba(245,158,11,0.08)', high: 'rgba(239,68,68,0.08)' };
-    const sevBorder = { low: 'rgba(34,197,94,0.25)', medium: 'rgba(245,158,11,0.25)', high: 'rgba(239,68,68,0.3)' };
+    const severity = isHealthy ? 'low' : 'medium';
+    const sevColors = { low: 'var(--c-success)', medium: 'var(--c-accent)' };
+    const sevBg = { low: 'rgba(34,197,94,0.08)', medium: 'rgba(245,158,11,0.08)' };
+    const sevBorder = { low: 'rgba(34,197,94,0.25)', medium: 'rgba(245,158,11,0.25)' };
 
     let html = '';
 
-    // ---- Fallback Mode Indicator ----
-    if (data.analysis_mode === 'local_fallback') {
-      html += `
-        <div class="cd-offline-banner" style="margin-bottom:var(--sp-lg);">
-          <span class="offline-icon">🔌</span>
-          <div>
-            <div class="offline-title">Local Fallback Analysis Mode</div>
-            <div class="offline-desc">
-              The neural vision server is initializing. This result uses local leaf pigmentation heuristic analysis as a preliminary estimate. Full AI deep-learning model will activate shortly.
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
     // ---- Diagnosis Header ----
     html += `
-      <div class="cd-diagnosis-hero" style="background:${sevBg[details.severity]};border:1px solid ${sevBorder[details.severity]};margin-bottom:var(--sp-xl);">
+      <div class="cd-diagnosis-hero" style="background:${sevBg[severity]};border:1px solid ${sevBorder[severity]};margin-bottom:var(--sp-xl);">
         <div class="diagnosis-status-icon">${isHealthy ? '✅' : '⚠️'}</div>
-        <div class="diagnosis-disease-name" style="color:${sevColors[details.severity]};">${diseaseName}</div>
-        <div class="diagnosis-severity-wrap">
-          <span>Pathology Severity:</span>
-          <span class="severity-badge-pill" style="color:${sevColors[details.severity]};border-color:${sevColors[details.severity]};">${details.severityLabel}</span>
-        </div>
+        <div class="diagnosis-disease-name" style="color:${sevColors[severity]};">${isHealthy ? 'No supported disease pattern detected' : `Possible model match: ${diseaseName}`}</div>
+        <div class="diagnosis-severity-wrap">Image screening only · confirm in the field</div>
       </div>
     `;
 
@@ -429,67 +372,86 @@ export function initCropDoctor() {
             <div class="confidence-row">
               <span class="confidence-name ${i === 0 ? 'top' : ''}">${s.name}</span>
               <div class="confidence-track">
-                <div class="confidence-fill" style="width:${s.conf}%;background:${i === 0 ? (isHealthy ? 'var(--c-success)' : sevColors[details.severity]) : 'var(--c-text-dim)'};"></div>
+                <div class="confidence-fill" style="width:${s.conf}%;background:${i === 0 ? (isHealthy ? 'var(--c-success)' : sevColors[severity]) : 'var(--c-text-dim)'};"></div>
               </div>
-              <span class="confidence-pct ${i === 0 ? 'top' : ''}" style="${i === 0 ? `color:${sevColors[details.severity]};` : ''}">${s.conf}%</span>
+              <span class="confidence-pct ${i === 0 ? 'top' : ''}" style="${i === 0 ? `color:${sevColors[severity]};` : ''}">${s.conf}%</span>
             </div>
           `).join('')}
         </div>
       </div>
     `;
 
-    // ---- Cause ----
+    // ---- Clinical Agronomy Guidance Card ----
     html += `
-      <div class="card" style="margin-bottom:var(--sp-lg);padding:var(--sp-lg);">
-        <h3 class="section-title"><span class="icon">🔍</span> About This Condition</h3>
-        <p style="font-size:0.9rem;color:var(--c-text-secondary);line-height:1.7;">${details.cause}</p>
-        ${details.symptoms.length ? `
-          <div style="margin-top:var(--sp-md);">
-            <div style="font-weight:700;font-size:0.85rem;margin-bottom:var(--sp-sm);color:var(--c-text);">Typical Field Symptoms:</div>
-            <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;">
-              ${details.symptoms.map(s => `
-                <li style="display:flex;gap:8px;font-size:0.83rem;color:var(--c-text-secondary);line-height:1.5;">
-                  <span style="flex-shrink:0;color:${sevColors[details.severity]};">•</span> ${s}
-                </li>
-              `).join('')}
-            </ul>
-          </div>
-        ` : ''}
-      </div>
-    `;
+      <div class="card cd-guidance-card" style="margin-bottom:var(--sp-lg);padding:var(--sp-lg);">
+        <h3 class="section-title"><span class="icon">🌿</span> Agronomic Diagnosis & Management Guide</h3>
 
-    // ---- Treatment Steps ----
-    html += `
-      <div class="card" style="margin-bottom:var(--sp-lg);padding:var(--sp-lg);">
-        <h3 class="section-title"><span class="icon">💊</span> Actionable Treatment Protocol</h3>
-        <div style="display:flex;flex-direction:column;gap:var(--sp-md);margin-top:var(--sp-sm);">
-          ${details.treatment.map((t, i) => `
-            <div class="treatment-step-card" style="border-left:3px solid ${sevColors[details.severity]};">
-              <span class="step-num" style="color:${sevColors[details.severity]};">${i + 1}</span>
-              <div>
-                <div class="step-title">${t.step}</div>
-                <div class="step-detail">${t.detail}</div>
+        <div class="cd-scope-badge-wrap" style="margin-bottom:var(--sp-md);">
+          <span class="trust-pill" style="font-size:0.8rem;background:rgba(34,197,94,0.1);color:var(--c-primary);border:1px solid rgba(34,197,94,0.25);">
+            🥔 Supported Scope: ${diag.crop || 'Potato (Solanum tuberosum)'}
+          </span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:var(--sp-md);">
+          ${diag.symptoms ? `
+            <div class="guidance-block">
+              <div style="font-weight:700;font-size:0.95rem;color:var(--c-text);margin-bottom:4px;">
+                🔍 Observed Foliar Symptoms:
+              </div>
+              <p style="font-size:0.9rem;color:var(--c-text-secondary);line-height:1.6;margin:0;">
+                ${diag.symptoms}
+              </p>
+            </div>
+          ` : ''}
+
+          ${diag.prevention ? `
+            <div class="guidance-block">
+              <div style="font-weight:700;font-size:0.95rem;color:var(--c-text);margin-bottom:4px;">
+                🛡️ Field Hygiene & Preventive Practices:
+              </div>
+              <p style="font-size:0.9rem;color:var(--c-text-secondary);line-height:1.6;margin:0;">
+                ${diag.prevention}
+              </p>
+            </div>
+          ` : ''}
+
+          ${(diag.next_steps || diag.plan) ? `
+            <div class="guidance-block">
+              <div style="font-weight:700;font-size:0.95rem;color:var(--c-text);margin-bottom:4px;">
+                📋 Recommended Practical Next Steps:
+              </div>
+              <p style="font-size:0.9rem;color:var(--c-text-secondary);line-height:1.6;margin:0;">
+                ${diag.next_steps || diag.plan}
+              </p>
+            </div>
+          ` : ''}
+
+          ${diag.med && diag.med !== 'None' ? `
+            <div class="guidance-block" style="background:rgba(245,158,11,0.06);padding:var(--sp-md);border-radius:var(--r-md);border:1px solid rgba(245,158,11,0.2);">
+              <div style="font-weight:700;font-size:0.95rem;color:var(--c-accent);margin-bottom:4px;">
+                💊 Approved Chemical Management (Label Directed):
+              </div>
+              <p style="font-size:0.9rem;color:var(--c-text-secondary);line-height:1.6;margin:0 0 6px 0;">
+                ${diag.med}
+              </p>
+              <div style="font-size:0.8rem;color:var(--c-text-muted);line-height:1.5;">
+                ⚠️ <em>AGRIFY strictly adheres to ICAR safety guidelines: never apply unverified chemical dosages. Always consult a licensed local agronomist or Krishi Vigyan Kendra (KVK) officer and follow manufacturer product labels.</em>
               </div>
             </div>
-          `).join('')}
+          ` : ''}
         </div>
       </div>
     `;
 
-    // ---- Prevention ----
+    // Do not turn an image classification into treatment or yield-loss advice.
     html += `
-      <div class="card" style="margin-bottom:var(--sp-lg);padding:var(--sp-lg);">
-        <h3 class="section-title"><span class="icon">🛡️</span> Cultural & Preventive Field Measures</h3>
-        <ul class="solution-list" style="margin-top:var(--sp-sm);">
-          ${details.prevention.map(p => `<li>${p}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-
-    // ---- Yield Impact ----
-    html += `
-      <div class="yield-impact-banner" style="background:${sevBg[details.severity]};border:1px solid ${sevBorder[details.severity]};margin-bottom:var(--sp-xl);">
-        📉 <strong>Projected Yield Impact:</strong> ${details.estimatedLoss}
+      <div class="card" role="note" style="margin-bottom:var(--sp-xl);padding:var(--sp-lg);">
+        <h3 class="section-title"><span class="icon">👨‍🌾</span> Confirm before taking action</h3>
+        <p style="font-size:0.9rem;color:var(--c-text-secondary);line-height:1.7;">
+          ${isHealthy
+            ? 'This image did not match a supported disease pattern. That does not confirm the plant or field is disease-free; keep monitoring and seek local advice if symptoms continue.'
+            : 'This image model screening is limited to potato leaves and can be wrong. Ask a local KVK or plant pathologist to confirm the field symptoms before choosing a treatment. Do not apply pesticides based on this result alone; follow local registration and product-label directions.'}
+        </p>
       </div>
     `;
 

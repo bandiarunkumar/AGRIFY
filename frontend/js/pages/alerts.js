@@ -1,6 +1,21 @@
 // ============================================================
 // AGRIFY — Farm Risk & Advisory Alert Center
 // Live alerts by GPS: weather, soil, satellite NDVI, news, crop
+
+function escapeAlertText(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char]);
+}
+
+function safeNewsUrl(value) {
+  try {
+    const url = new URL(String(value ?? ''));
+    return ['https:', 'http:'].includes(url.protocol) ? escapeAlertText(url.href) : '#';
+  } catch {
+    return '#';
+  }
+}
 // ============================================================
 
 import { getAlerts, getNews, getCurrentPosition, reverseGeocode } from '../api.js';
@@ -18,13 +33,11 @@ export function renderAlerts() {
         </div>
         <h1 class="alerts-hero-title">🚨 Farm Alert Center</h1>
         <p class="alerts-hero-sub">
-          Live alerts from weather, soil, satellite NDVI, agriculture news, and crop calendars
+          Rule-based advisories from available weather feeds, modeled soil estimates, and crop-season rules
         </p>
         <div class="alerts-source-strip">
           <span class="source-chip-pill">🌤️ Weather API</span>
-          <span class="source-chip-pill">🧪 Soil Sensors</span>
-          <span class="source-chip-pill">🛰️ Satellite NDVI</span>
-          <span class="source-chip-pill">📰 Agri News</span>
+          <span class="source-chip-pill">🧪 SoilGrids estimates</span>
           <span class="source-chip-pill">🌱 Crop Calendar</span>
         </div>
       </div>
@@ -34,7 +47,7 @@ export function renderAlerts() {
         <h3 class="section-title"><span class="icon">📍</span> Get Alerts for My Farm</h3>
         <div class="alerts-controls-row">
           <div class="form-group alerts-form-group">
-            <label>Current Crop</label>
+            <label for="alert-crop">Current Crop</label>
             <select class="form-select" id="alert-crop">
               <option value="rice">Rice</option>
               <option value="wheat">Wheat</option>
@@ -45,7 +58,7 @@ export function renderAlerts() {
             </select>
           </div>
           <div class="form-group alerts-form-group">
-            <label>Season</label>
+            <label for="alert-season">Season</label>
             <select class="form-select" id="alert-season">
               <option value="Kharif">Kharif</option>
               <option value="Rabi">Rabi</option>
@@ -62,7 +75,7 @@ export function renderAlerts() {
       </div>
 
       <!-- Alert Results -->
-      <div id="alerts-results">
+      <div id="alerts-results" aria-live="polite" aria-busy="false">
         <div class="alerts-empty-state">
           <div class="alerts-empty-icon">🔔</div>
           <div class="alerts-empty-title">No alerts loaded yet</div>
@@ -77,7 +90,7 @@ export function renderAlerts() {
             <h3 class="section-title" style="margin:0;"><span class="icon">📰</span> Agriculture News</h3>
             <span class="alerts-news-note">Curated agri news with crop tags &amp; sentiment</span>
           </div>
-          <div id="news-results">
+          <div id="news-results" aria-live="polite" aria-busy="false">
             <button class="btn btn-secondary alerts-load-news-btn" id="load-news-btn">
               📡 Load Latest Agriculture News
             </button>
@@ -99,6 +112,8 @@ async function loadAlerts() {
   const crop = document.getElementById('alert-crop')?.value || 'rice';
   const season = document.getElementById('alert-season')?.value || 'Kharif';
 
+  document.getElementById('alerts-results')?.setAttribute('aria-busy', 'true');
+
   btn.textContent = '📡 Locating...';
   btn.classList.add('loading');
 
@@ -106,7 +121,7 @@ async function loadAlerts() {
     <div class="alerts-loading-state">
       <div class="spinner alerts-spinner"></div>
       <div class="alerts-loading-text">Fetching live alerts for your location...</div>
-      <div class="alerts-loading-sub">Checking weather, soil, satellite, and crop calendars</div>
+      <div class="alerts-loading-sub">Checking available weather, soil estimates, and crop-season rules</div>
     </div>
   `;
 
@@ -114,17 +129,26 @@ async function loadAlerts() {
     const pos = await getCurrentPosition();
     const result = await getAlerts(pos.lat, pos.lon, crop, season);
     const alerts = result.alerts || [];
+    const degraded = ['partial', 'unavailable'].includes(result.data_quality);
+    const dataNote = escapeAlertText(result.data_quality_note || 'Some alert sources may be unavailable.');
 
     const icons = { danger: '🔴', warning: '🟡', info: '🔵', tip: '✅' };
     const types = { weather: '🌤️', soil: '🧪', satellite: '🛰️', news: '📰', crop: '🌱' };
 
     if (alerts.length === 0) {
-      document.getElementById('alerts-results').innerHTML = `
-        <div class="alerts-all-clear-card">
+      document.getElementById('alerts-results').innerHTML = degraded ? `
+        <div class="alerts-error-card" role="status">
+          <div class="alerts-error-icon">📡</div>
+          <div class="alerts-error-title">Alert coverage is incomplete</div>
+          <p class="alerts-error-msg">${dataNote} An empty list does not mean the farm is risk-free.</p>
+        </div>
+      ` : `
+        <div class="alerts-all-clear-card" role="status">
           <div class="all-clear-icon">✅</div>
-          <div class="all-clear-title">All Clear!</div>
-          <p class="all-clear-sub">No critical alerts for your farm at this time. Continue regular schedule.</p>
-          <div class="all-clear-gps">📍 GPS: ${pos.lat.toFixed(3)}, ${pos.lon.toFixed(3)} · Crop: ${crop} · Season: ${season}</div>
+          <div class="all-clear-title">No alerts from available sources</div>
+          <p class="all-clear-sub">No alert rules were triggered by the data returned for this request. Keep monitoring your field.</p>
+          <div class="all-clear-gps">📍 GPS: ${pos.lat.toFixed(3)}, ${pos.lon.toFixed(3)} · Crop: ${escapeAlertText(crop)} · Season: ${escapeAlertText(season)}</div>
+          ${result.data_quality === 'estimated' ? `<p class="all-clear-sub">${dataNote}</p>` : ''}
         </div>
       `;
     } else {
@@ -134,6 +158,7 @@ async function loadAlerts() {
       const infoCount     = alerts.filter(a => a.severity === 'info' || a.severity === 'tip').length;
 
       document.getElementById('alerts-results').innerHTML = `
+        ${degraded ? `<div class="alerts-error-card" role="status"><div class="alerts-error-icon">📡</div><div class="alerts-error-title">Some alert sources are unavailable</div><p class="alerts-error-msg">${dataNote}</p></div>` : ''}
         <div class="alerts-summary-bar">
           <div class="alerts-summary-left">
             <h3 class="section-title" style="margin:0;"><span class="icon">🚨</span> ${alerts.length} Active Alert${alerts.length > 1 ? 's' : ''}</h3>
@@ -155,13 +180,13 @@ async function loadAlerts() {
               </div>
               <div class="alert-content">
                 <div class="alert-card-top-row">
-                  <div class="alert-title">${a.title}</div>
+                <div class="alert-title">${escapeAlertText(a.title)}</div>
                   <span class="alert-sev-label ${a.severity}">${a.severity === 'danger' ? 'CRITICAL' : a.severity === 'warning' ? 'WARNING' : a.severity === 'tip' ? 'TIP' : 'INFO'}</span>
                 </div>
-                <div class="alert-message">${a.message}</div>
+                <div class="alert-message">${escapeAlertText(a.message)}</div>
                 ${a.source ? `
                   <div class="alert-source-row">
-                    <span class="alert-source-label">Source: ${a.source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                    <span class="alert-source-label">Source: ${escapeAlertText(a.source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))}</span>
                   </div>` : ''}
               </div>
             </div>
@@ -169,23 +194,24 @@ async function loadAlerts() {
         </div>
 
         <div class="alerts-footer-note">
-          ⚠️ Alerts are AI-generated from live data. Verify critical advisories with local KVK/agriculture officials before action.
+          ⚠️ Advisories are rule-based and depend on the sources reported above. Verify critical recommendations with local agriculture officials.
         </div>
       `;
     }
 
-    showToast(`✅ ${alerts.length} alerts loaded`, 'success');
+    showToast(degraded ? 'Some alert feeds are unavailable; empty results are not an all-clear.' : `✅ ${alerts.length} alerts loaded`, degraded ? 'warning' : 'success');
   } catch (err) {
     document.getElementById('alerts-results').innerHTML = `
       <div class="alerts-error-card">
         <div class="alerts-error-icon">⚠️</div>
         <div class="alerts-error-title">Could Not Load Alerts</div>
-        <p class="alerts-error-msg">${err.message}</p>
+        <p class="alerts-error-msg">${escapeAlertText(err.message)}</p>
         <div class="alerts-error-hint">Ensure GPS permission is granted and try again.</div>
       </div>
     `;
     showToast(err.message, 'error');
   } finally {
+    document.getElementById('alerts-results')?.setAttribute('aria-busy', 'false');
     btn.textContent = '📡 Load Alerts for My GPS Location';
     btn.classList.remove('loading');
   }
@@ -193,6 +219,7 @@ async function loadAlerts() {
 
 async function loadNews() {
   const newsEl = document.getElementById('news-results');
+  newsEl?.setAttribute('aria-busy', 'true');
   newsEl.innerHTML = `
     <div class="alerts-loading-state" style="padding:var(--sp-xl) 0;">
       <div class="spinner alerts-spinner"></div>
@@ -209,10 +236,11 @@ async function loadNews() {
         <div class="alerts-news-empty">
           <div class="alerts-empty-icon" style="font-size:2rem;">📰</div>
           <div style="font-size:0.88rem;color:var(--c-text-secondary);line-height:1.6;">
-            ${result.note || 'No news available. Add NEWSAPI_KEY to backend/.env for live agriculture news.'}
+            ${escapeAlertText(result.note || 'No news available. Add NEWSAPI_KEY to backend/.env for live agriculture news.')}
           </div>
         </div>
       `;
+      newsEl.setAttribute('aria-busy', 'false');
       return;
     }
 
@@ -224,13 +252,13 @@ async function loadNews() {
         ${articles.map((art, i) => `
           <div class="alerts-news-item" style="animation-delay:${i * 50}ms;">
             <div class="news-item-main">
-              <a href="${art.url}" target="_blank" rel="noopener" class="news-item-title">
-                ${alertBadges[art.alert_level] || ''} ${art.title}
+              <a href="${safeNewsUrl(art.url)}" target="_blank" rel="noopener noreferrer" class="news-item-title">
+                ${alertBadges[art.alert_level] || ''} ${escapeAlertText(art.title)}
               </a>
-              ${art.description ? `<p class="news-item-desc">${art.description.slice(0,200)}...</p>` : ''}
+              ${art.description ? `<p class="news-item-desc">${escapeAlertText(art.description.slice(0,200))}...</p>` : ''}
               <div class="news-item-meta">
-                <span class="source-chip">📰 ${art.source_name || 'Unknown'}</span>
-                ${art.crop_tags ? art.crop_tags.split(',').slice(0,3).map(t => `<span class="crop-tag season">${t.trim()}</span>`).join('') : ''}
+                <span class="source-chip">📰 ${escapeAlertText(art.source_name || 'Unknown')}</span>
+                ${art.crop_tags ? String(art.crop_tags).split(',').slice(0,3).map(t => `<span class="crop-tag season">${escapeAlertText(t.trim())}</span>`).join('') : ''}
                 <span class="news-sentiment-icon" style="color:${sentimentColors[art.sentiment] || 'var(--c-text-muted)'};">
                   ${art.sentiment === 'positive' ? '📈' : art.sentiment === 'negative' ? '📉' : '📊'}
                 </span>
@@ -246,8 +274,10 @@ async function loadNews() {
   } catch (err) {
     newsEl.innerHTML = `
       <div class="alerts-error-card" style="margin:0;">
-        <p class="alerts-error-msg">⚠️ ${err.message}</p>
+        <p class="alerts-error-msg">⚠️ ${escapeAlertText(err.message)}</p>
       </div>
     `;
+  } finally {
+    newsEl?.setAttribute('aria-busy', 'false');
   }
 }

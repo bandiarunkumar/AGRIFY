@@ -40,13 +40,16 @@ class FarmProfile(db.Model):
     # Source metadata
     geocode_source = db.Column(db.String(64), default='nominatim')
     geocode_url    = db.Column(db.Text)
+    owner_token_hash = db.Column(db.String(64), nullable=True)  # SHA256 of access token for ownership check
     created_at     = db.Column(db.DateTime(timezone=True), default=utcnow)
     updated_at     = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
-    # Relationships
-    weather_snapshots   = db.relationship('WeatherSnapshot', backref='farm', lazy=True)
-    soil_summaries      = db.relationship('SoilSummary', backref='farm', lazy=True)
-    crop_recommendations = db.relationship('CropRecommendation', backref='farm', lazy=True)
+    # Relationships with automatic cascade deletion for privacy and cleanup
+    weather_snapshots    = db.relationship('WeatherSnapshot', backref='farm', cascade='all, delete-orphan', lazy=True)
+    soil_summaries       = db.relationship('SoilSummary', backref='farm', cascade='all, delete-orphan', lazy=True)
+    crop_recommendations = db.relationship('CropRecommendation', backref='farm', cascade='all, delete-orphan', lazy=True)
+    action_plans         = db.relationship('FarmActionPlan', backref='farm', cascade='all, delete-orphan', lazy=True)
+
 
     def to_dict(self):
         return {
@@ -228,6 +231,43 @@ class CropRecommendation(db.Model):
     created_at       = db.Column(db.DateTime(timezone=True), default=utcnow)
     data_quality     = db.Column(db.String(16), default='live')
 
+    def to_dict(self):
+        import json
+        top_crops = []
+        all_feasible = []
+        try:
+            if self.top_crops_json:
+                top_crops = json.loads(self.top_crops_json)
+        except Exception:
+            top_crops = []
+        try:
+            if self.all_feasible_json:
+                all_feasible = json.loads(self.all_feasible_json)
+        except Exception:
+            all_feasible = []
+        return {
+            'id': self.id,
+            'farm_id': self.farm_id,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'season': self.season,
+            'district': self.district,
+            'top_crops': top_crops,
+            'all_feasible': all_feasible,
+            'temperature_c': self.temperature_c,
+            'humidity_pct': self.humidity_pct,
+            'soil_n': self.soil_n,
+            'soil_p': self.soil_p,
+            'soil_k': self.soil_k,
+            'soil_ph': self.soil_ph,
+            'rainfall_mm': self.rainfall_mm,
+            'soil_moisture': self.soil_moisture,
+            'model_version': self.model_version,
+            'data_quality': self.data_quality,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 
 # ============================================================
 # TABLE: district_crop_history
@@ -368,4 +408,59 @@ class FarmAlert(db.Model):
             'message': self.message,
             'source': self.source_module,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ============================================================
+# TABLE: farm_action_plans
+# Agronomic 7-day and immediate actionable plans tied to farm and crop
+# ============================================================
+class FarmActionPlan(db.Model):
+    __tablename__ = 'farm_action_plans'
+
+    id                      = db.Column(db.Integer, primary_key=True)
+    farm_id                 = db.Column(db.Integer, db.ForeignKey('farm_profiles.id'), nullable=True)
+    crop_recommendation_id  = db.Column(db.Integer, db.ForeignKey('crop_recommendations.id'), nullable=True)
+    crop_name               = db.Column(db.String(128), nullable=False)
+    season                  = db.Column(db.String(32))
+    location_str            = db.Column(db.String(256))
+    summary                 = db.Column(db.Text)
+    immediate_actions_json  = db.Column(db.Text)
+    this_week_plan_json     = db.Column(db.Text)
+    disclaimer              = db.Column(db.Text)
+    data_quality            = db.Column(db.String(16), default='live')
+    created_at              = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at              = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    # Relationship back to crop recommendation if desired
+    crop_recommendation     = db.relationship('CropRecommendation', backref='action_plans', lazy=True)
+
+    def to_dict(self):
+        import json
+        immediate = []
+        this_week = []
+        try:
+            if self.immediate_actions_json:
+                immediate = json.loads(self.immediate_actions_json)
+        except Exception:
+            immediate = []
+        try:
+            if self.this_week_plan_json:
+                this_week = json.loads(self.this_week_plan_json)
+        except Exception:
+            this_week = []
+        return {
+            'id': self.id,
+            'farm_id': self.farm_id,
+            'crop_recommendation_id': self.crop_recommendation_id,
+            'crop_name': self.crop_name,
+            'season': self.season,
+            'location': self.location_str,
+            'summary': self.summary,
+            'immediate_actions': immediate,
+            'this_week_plan': this_week,
+            'disclaimer': self.disclaimer,
+            'data_quality': self.data_quality,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

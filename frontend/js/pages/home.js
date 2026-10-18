@@ -1,85 +1,37 @@
 // ============================================================
-// Home Page — CINEMATIC HEROIC Entry with Letter Scramble
+// Home Page — Farmer workspace and AGRIFY field intelligence
 // ============================================================
 
 import { t, getLang } from '../i18n.js';
 import { renderIntroVideo, initIntroVideo } from '../components/introVideo.js';
 
-let hasPlayedIntro = false;
-
 export function renderHome() {
   const lang = getLang();
 
   return `
-    <!-- CINEMATIC INTRO OVERLAY (plays once per session) -->
-    ${!hasPlayedIntro ? `
-    <div class="cinema-intro-overlay" id="cinema-intro">
-      <!-- Particle explosion layer -->
-      <canvas id="cinema-particles-canvas"></canvas>
-
-      <!-- Shockwave rings -->
-      <div class="cinema-shockwave-container">
-        <div class="cinema-shockwave ring1"></div>
-        <div class="cinema-shockwave ring2"></div>
-        <div class="cinema-shockwave ring3"></div>
-      </div>
-
-      <!-- Lightning bolt flashes -->
-      <div class="cinema-lightning" id="cinema-lightning"></div>
-
-      <!-- Core content -->
-      <div class="cinema-intro-content">
-        <!-- Central emblem -->
-        <div class="cinema-emblem" id="cinema-emblem">
-          <div class="cinema-emblem-ring"></div>
-          <div class="cinema-emblem-ring cinema-emblem-ring-2"></div>
-          <div class="cinema-emblem-icon">🌾</div>
-        </div>
-
-        <!-- Scramble Title -->
-        <div class="cinema-title-stage" id="cinema-title-stage">
-          <div class="cinema-scramble-line" data-final="AGRI" id="scramble-word-1"></div>
-          <div class="cinema-scramble-line cinema-green-word" data-final="FY" id="scramble-word-2"></div>
-        </div>
-
-        <!-- Tagline -->
-        <div class="cinema-tagline" id="cinema-tagline">
-          <span class="cinema-tagline-word" style="--tw:0">Smart</span>
-          <span class="cinema-tagline-word" style="--tw:1">Farming</span>
-          <span class="cinema-tagline-word" style="--tw:2">for</span>
-          <span class="cinema-tagline-word" style="--tw:3">Every</span>
-          <span class="cinema-tagline-word" style="--tw:4">Farmer</span>
-          <span class="cinema-tagline-word cinema-tagline-emoji" style="--tw:5">🌱</span>
-        </div>
-
-        <!-- Click to enter -->
-        <div class="cinema-enter-hint" id="cinema-enter-hint">
-          <span class="cinema-enter-pulse"></span>
-          CLICK ANYWHERE TO ENTER
-        </div>
-      </div>
-    </div>
-    ` : ''}
-
     <div class="hero-section">
       <div class="hero-badge hero-anim" style="--anim-order:0">
         <span class="hero-badge-dot"></span>
         ${t('hero_badge')}
       </div>
 
+      <div class="hero-main">
+        <div class="hero-copy">
       <h1 class="hero-title">
         <span class="hero-word-line">
-          <span class="hero-word hero-jumble-word" data-final="${t('hero_title_1').split(' ')[0] || 'Smart'}" style="--word-i:0">${t('hero_title_1').split(' ')[0] || 'Smart'}</span>
-          <span class="hero-word hero-jumble-word" data-final="${t('hero_title_1').split(' ')[1] || 'Farming'}" style="--word-i:1">${t('hero_title_1').split(' ')[1] || 'Farming'}</span>
+          <span class="hero-word">${t('hero_title_1').split(' ')[0] || 'Smart'}</span>
+          <span class="hero-word">${t('hero_title_1').split(' ')[1] || 'Farming'}</span>
         </span>
         <span class="hero-word-line">
-          <span class="hero-word hero-jumble-word green" data-final="${t('hero_title_2').split(' ')[0] || 'Made'}" style="--word-i:2">${t('hero_title_2').split(' ')[0] || 'Made'}</span>
-          <span class="hero-word hero-jumble-word green" data-final="${t('hero_title_2').split(' ')[1] || 'Simple'}" style="--word-i:3">${t('hero_title_2').split(' ')[1] || 'Simple'}</span>
+          ${lang === 'te'
+            ? `<span class="hero-word green">${t('hero_title_2')}</span>`
+            : `<span class="hero-word green">${t('hero_title_2').split(' ')[0] || 'Made'}</span>
+               <span class="hero-word green">${t('hero_title_2').split(' ')[1] || 'Simple'}</span>`}
         </span>
         <span class="hero-word-line">
-          <span class="hero-word hero-jumble-word" data-final="${t('hero_title_3').split(' ')[0] || 'For'}" style="--word-i:4">${t('hero_title_3').split(' ')[0] || 'For'}</span>
-          <span class="hero-word hero-jumble-word" data-final="${t('hero_title_3').split(' ')[1] || 'Every'}" style="--word-i:5">${t('hero_title_3').split(' ')[1] || 'Every'}</span>
-          <span class="hero-word hero-jumble-word" data-final="${t('hero_title_3').split(' ')[2] || 'Farmer'}" style="--word-i:6">${t('hero_title_3').split(' ')[2] || 'Farmer'}</span>
+          <span class="hero-word">${t('hero_title_3').split(' ')[0] || 'For'}</span>
+          <span class="hero-word">${t('hero_title_3').split(' ')[1] || 'Every'}</span>
+          <span class="hero-word">${t('hero_title_3').split(' ')[2] || 'Farmer'}</span>
         </span>
       </h1>
 
@@ -96,12 +48,12 @@ export function renderHome() {
         <div class="hero-mascot-speech">
           <div class="hero-mascot-header">
             <span class="hero-mascot-tag">✨ AGRIFY AI</span>
-            <span class="hero-mascot-live">${lang === 'te' ? 'ఆన్‌లైన్ · సిద్ధంగా ఉంది' : 'Active · Multilingual'}</span>
+            <span class="hero-mascot-live">${lang === 'te' ? 'వ్యవసాయ సహాయకుడు' : 'Farming assistant'}</span>
           </div>
           <p class="hero-mascot-quote">
             ${lang === 'te' 
-              ? 'నమస్కారం! మీ నేల డేటా, పంట సిఫారసులు మరియు 3000+ మార్కెట్ ధరల గురించి ఏ ప్రశ్నైనా అడగండి.' 
-              : '“Namaste! I analyze your soil data, diagnose crop leaf diseases, and track mandi price trends in real-time.”'}
+              ? 'నమస్కారం! వ్యవసాయ విషయాలపై అడగండి. అందుబాటులో ఉన్న నేల, వాతావరణం మరియు మార్కెట్ డేటాతో సమాధానం ఇస్తాను.'
+              : '“Ask me about farming. I can explain available soil, weather, and market information and clearly flag when data is unavailable.”'}
           </p>
           <div class="hero-mascot-action">
             <span>${lang === 'te' ? 'చాట్ ప్రారంభించండి' : 'Ask AI Companion'}</span>
@@ -126,17 +78,17 @@ export function renderHome() {
       <div class="hero-trust-bar hero-anim" style="--anim-order:10">
         <div class="trust-item">
           <span class="trust-icon">🛰️</span>
-          <span class="trust-label">${lang === 'te' ? 'ISRIC ఉపగ్రహ నేల డేటా' : 'ISRIC Satellite Soil Grids'}</span>
+          <span class="trust-label">${lang === 'te' ? 'ISRIC నేల అంచనాలు' : 'ISRIC soil estimates'}</span>
         </div>
         <div class="trust-sep">·</div>
         <div class="trust-item">
           <span class="trust-icon">📊</span>
-          <span class="trust-label">${lang === 'te' ? '3000+ లైవ్ మండీలు' : '3,000+ Mandi Prices'}</span>
+          <span class="trust-label">${lang === 'te' ? 'Agmarknet ధరల శోధన' : 'Agmarknet price lookup'}</span>
         </div>
         <div class="trust-sep">·</div>
         <div class="trust-item">
           <span class="trust-icon">🔬</span>
-          <span class="trust-label">${lang === 'te' ? 'AI వ్యాధి నిర్ధారణ' : 'Vision Disease AI'}</span>
+          <span class="trust-label">${lang === 'te' ? 'బంగాళాదుంప ఆకు స్క్రీనింగ్' : 'Potato leaf screening'}</span>
         </div>
         <div class="trust-sep">·</div>
         <div class="trust-item">
@@ -144,8 +96,65 @@ export function renderHome() {
           <span class="trust-label">${lang === 'te' ? 'వాయిస్ & తెలుగు మద్దతు' : 'Voice & Telugu Support'}</span>
         </div>
       </div>
+        </div>
+
+        <div class="hero-landscape" role="img" aria-label="${lang === 'te' ? 'వ్యవసాయ భూమి, ఉదయ సూర్యుడు మరియు పంట వరుసల అసలు దృశ్యచిత్రం' : 'Illustration of Indian farmland at sunrise with cultivated crop rows'}">
+          <svg class="landscape-art" viewBox="0 0 720 500" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="field-sky" x1="0" y1="0" x2="0.9" y2="1">
+                <stop offset="0" stop-color="#f5d9a1" />
+                <stop offset="0.58" stop-color="#e8c88c" />
+                <stop offset="1" stop-color="#bdd2a4" />
+              </linearGradient>
+              <linearGradient id="field-earth" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#8aab65" />
+                <stop offset="1" stop-color="#315c3c" />
+              </linearGradient>
+              <linearGradient id="field-row" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#d9c18b" stop-opacity=".85" />
+                <stop offset="1" stop-color="#c7a766" stop-opacity=".08" />
+              </linearGradient>
+              <radialGradient id="field-sun-glow">
+                <stop offset="0" stop-color="#fff6d9" stop-opacity=".95" />
+                <stop offset="1" stop-color="#fff6d9" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <rect width="720" height="500" rx="32" fill="url(#field-sky)" />
+            <circle cx="514" cy="122" r="112" fill="url(#field-sun-glow)" />
+            <circle cx="514" cy="122" r="38" fill="#fff1c9" />
+            <path d="M0 245 C105 195 205 211 296 244 C397 280 485 205 579 221 C633 230 681 250 720 264 L720 500 L0 500Z" fill="#829c6b" opacity=".63" />
+            <path d="M0 294 C99 250 207 270 303 302 C415 338 501 259 594 273 C646 280 688 299 720 312 L720 500 L0 500Z" fill="#53764e" />
+            <path d="M0 343 C120 302 231 326 336 357 C452 392 560 313 720 357 L720 500 L0 500Z" fill="url(#field-earth)" />
+            <path d="M0 381 C137 340 235 355 347 390 C478 430 582 351 720 389 L720 500 L0 500Z" fill="#315a3d" />
+            <g fill="none" stroke="url(#field-row)" stroke-width="3" opacity=".8">
+              <path d="M-40 500 C123 387 241 370 375 386 C510 402 610 450 760 500" />
+              <path d="M76 500 C208 403 295 393 390 404 C494 416 582 460 665 500" />
+              <path d="M203 500 C286 435 340 420 406 427 C472 433 523 465 568 500" />
+              <path d="M324 500 C366 461 393 447 423 449 C455 451 480 474 501 500" />
+            </g>
+            <g fill="#6f8d52" opacity=".88">
+              <path d="M96 328c-8-25-4-44 10-59 12 20 12 39 1 58 18-13 34-15 49-7-16 17-34 22-54 13l-2 28h-5l1-33Z" />
+              <path d="M628 318c-7-21-4-38 8-51 11 17 11 33 1 50 16-11 29-12 42-5-14 15-29 18-46 10l-2 25h-5l2-29Z" />
+            </g>
+            <g fill="#e9d49f" opacity=".55">
+              <circle cx="135" cy="152" r="2" /><circle cx="181" cy="116" r="2" /><circle cx="231" cy="166" r="1.5" />
+              <circle cx="401" cy="101" r="2" /><circle cx="609" cy="179" r="2" /><circle cx="355" cy="185" r="1.5" />
+            </g>
+          </svg>
+          <div class="landscape-caption">
+            <span class="landscape-caption-mark" aria-hidden="true">✳</span>
+            <span>${lang === 'te' ? 'మీ పొలం కోసం రూపొందించబడింది' : 'Intelligence rooted in your field'}</span>
+          </div>
+          <svg class="landscape-leaf" viewBox="0 0 42 42" aria-hidden="true" focusable="false"><path d="M35 6C20 7 8 12 7 24c-.7 7 5 12 12 11C31 33 36 21 35 6Z" fill="currentColor"/><path d="M8 35c6-9 12-14 22-22" fill="none" stroke="var(--c-bg-card)" stroke-width="1.7" stroke-linecap="round" opacity=".85"/></svg>
+        </div>
+      </div>
 
       <!-- Feature Grid -->
+      <div class="home-workspace-heading">
+        <span class="home-kicker">${lang === 'te' ? 'వ్యవసాయ పనిముట్లు' : 'YOUR FARM WORKSPACE'}</span>
+        <h2>${lang === 'te' ? 'మీ తదుపరి పనిని ఎంచుకోండి' : 'Choose what you need today'}</h2>
+        <p>${lang === 'te' ? 'ప్రస్తుత వ్యవసాయ సమాచారం కోసం మీ స్థలం మరియు పంట వివరాలను ఉపయోగించండి.' : 'Use your farm location and crop details to get relevant field guidance.'}</p>
+      </div>
       <div class="feature-grid hero-anim" style="max-width:1160px;margin-top:var(--sp-2xl);--anim-order:11">
         <div class="feature-card" data-navigate="analysis">
           <div class="feature-card-header">
@@ -176,7 +185,7 @@ export function renderHome() {
         <div class="feature-card" data-navigate="weather">
           <div class="feature-card-header">
             <span class="feature-card-icon">🌩️</span>
-            <span class="feature-badge badge-blue">GPS Live</span>
+            <span class="feature-badge badge-blue">GPS Weather</span>
           </div>
           <div class="feature-card-title">${t('feature_weather')}</div>
           <div class="feature-card-desc">${t('feature_weather_desc')}</div>
@@ -202,7 +211,7 @@ export function renderHome() {
         <div class="feature-card" data-navigate="cropDoctor">
           <div class="feature-card-header">
             <span class="feature-card-icon">🔬</span>
-            <span class="feature-badge badge-amber">CNN Vision</span>
+            <span class="feature-badge badge-amber">Potato model</span>
           </div>
           <div class="feature-card-title">${t('feature_doctor')}</div>
           <div class="feature-card-desc">${t('feature_doctor_desc')}</div>
@@ -241,7 +250,7 @@ export function renderHome() {
         <div class="feature-card" data-navigate="alerts">
           <div class="feature-card-header">
             <span class="feature-card-icon">🚨</span>
-            <span class="feature-badge badge-amber">Real-Time</span>
+            <span class="feature-badge badge-amber">Farm advisories</span>
           </div>
           <div class="feature-card-title">${t('feature_alerts')}</div>
           <div class="feature-card-desc">${t('feature_alerts_desc')}</div>
@@ -271,280 +280,5 @@ export function renderHome() {
 }
 
 export function initHome() {
-  const isFirstVisit = !hasPlayedIntro;
-  const introDelay = isFirstVisit ? 5000 : 0;
-
-  // ============================================
-  // CINEMATIC INTRO (plays once per session)
-  // ============================================
-  if (!hasPlayedIntro) {
-    hasPlayedIntro = true;
-    const overlay = document.getElementById('cinema-intro');
-    if (overlay) {
-      initParticleCanvas();
-      triggerLightningFlashes();
-      startLetterScramble('scramble-word-1', 600);
-      startLetterScramble('scramble-word-2', 1200);
-      animateTaglineWords();
-
-      // Show enter hint after animations settle
-      setTimeout(() => {
-        const hint = document.getElementById('cinema-enter-hint');
-        if (hint) hint.classList.add('cinema-enter-visible');
-      }, 3800);
-
-      // Auto-dismiss after 5 seconds
-      const autoDismiss = setTimeout(() => {
-        dismissCinemaIntro(overlay);
-      }, 5800);
-
-      // Click to skip
-      overlay.addEventListener('click', () => {
-        clearTimeout(autoDismiss);
-        dismissCinemaIntro(overlay);
-      });
-    }
-  }
-
-  // Trigger hero word jumble after intro
-  triggerHeroJumble(introDelay);
-
-  // Initialize intro video player
-  setTimeout(() => initIntroVideo(), introDelay + 500);
-}
-
-// ============================================
-// LETTER SCRAMBLE ENGINE
-// ============================================
-const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*!?';
-
-function startLetterScramble(elementId, startDelay) {
-  const container = document.getElementById(elementId);
-  if (!container) return;
-
-  const finalWord = container.getAttribute('data-final');
-  if (!finalWord) return;
-
-  // Create letter cells
-  const letters = finalWord.split('');
-  container.innerHTML = '';
-
-  letters.forEach((char, i) => {
-    const cell = document.createElement('span');
-    cell.className = 'cinema-scramble-char';
-    cell.style.setProperty('--ci', i);
-    cell.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
-    cell.setAttribute('data-final', char);
-    container.appendChild(cell);
-  });
-
-  // Phase 1: Wild scramble (all letters randomizing)
-  setTimeout(() => {
-    const cells = container.querySelectorAll('.cinema-scramble-char');
-    cells.forEach(cell => cell.classList.add('cinema-char-active'));
-
-    let scrambleInterval = setInterval(() => {
-      cells.forEach(cell => {
-        if (!cell.classList.contains('cinema-char-locked')) {
-          cell.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
-        }
-      });
-    }, 50);
-
-    // Phase 2: Lock letters one by one
-    letters.forEach((char, i) => {
-      setTimeout(() => {
-        const cell = cells[i];
-        if (cell) {
-          cell.textContent = char;
-          cell.classList.add('cinema-char-locked');
-          cell.classList.add('cinema-char-slam');
-        }
-        // Clear interval when last letter locks
-        if (i === letters.length - 1) {
-          clearInterval(scrambleInterval);
-        }
-      }, 800 + i * 150);
-    });
-  }, startDelay);
-}
-
-// ============================================
-// PARTICLE CANVAS
-// ============================================
-function initParticleCanvas() {
-  const canvas = document.getElementById('cinema-particles-canvas');
-  if (!canvas) return;
-
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const particles = [];
-  const particleCount = 120;
-
-  for (let i = 0; i < particleCount; i++) {
-    particles.push({
-      x: canvas.width / 2 + (Math.random() - 0.5) * 100,
-      y: canvas.height / 2 + (Math.random() - 0.5) * 100,
-      vx: (Math.random() - 0.5) * 8,
-      vy: (Math.random() - 0.5) * 8,
-      radius: Math.random() * 3 + 1,
-      alpha: Math.random() * 0.8 + 0.2,
-      color: Math.random() > 0.5 ? '#22c55e' : '#86efac',
-      life: 1,
-      decay: 0.003 + Math.random() * 0.008,
-    });
-  }
-
-  function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    let alive = false;
-    particles.forEach(p => {
-      if (p.life <= 0) return;
-      alive = true;
-
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vx *= 0.99;
-      p.vy *= 0.99;
-      p.life -= p.decay;
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = p.alpha * p.life;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-
-      // Trailing line
-      if (p.life > 0.3) {
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - p.vx * 3, p.y - p.vy * 3);
-        ctx.strokeStyle = p.color;
-        ctx.globalAlpha = p.alpha * p.life * 0.3;
-        ctx.lineWidth = p.radius * 0.5;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
-    });
-
-    if (alive) requestAnimationFrame(animate);
-  }
-
-  // Start particles after a brief delay for dramatic effect
-  setTimeout(() => animate(), 200);
-}
-
-// ============================================
-// LIGHTNING FLASHES
-// ============================================
-function triggerLightningFlashes() {
-  const container = document.getElementById('cinema-lightning');
-  if (!container) return;
-
-  const flashTimes = [300, 800, 1600, 2400];
-  flashTimes.forEach(delay => {
-    setTimeout(() => {
-      container.classList.add('cinema-flash-active');
-      setTimeout(() => container.classList.remove('cinema-flash-active'), 100);
-    }, delay);
-  });
-}
-
-// ============================================
-// TAGLINE WORD ANIMATION
-// ============================================
-function animateTaglineWords() {
-  const words = document.querySelectorAll('.cinema-tagline-word');
-  words.forEach((word, i) => {
-    setTimeout(() => {
-      word.classList.add('cinema-tagline-visible');
-    }, 2800 + i * 180);
-  });
-}
-
-// ============================================
-// DISMISS CINEMA INTRO
-// ============================================
-function dismissCinemaIntro(overlay) {
-  if (overlay.classList.contains('cinema-intro-exit')) return;
-  overlay.classList.add('cinema-intro-exit');
-
-  // Screen shake effect on the body
-  document.body.classList.add('cinema-screen-shake');
-  setTimeout(() => document.body.classList.remove('cinema-screen-shake'), 500);
-
-  setTimeout(() => {
-    overlay.remove();
-    // Trigger hero entry immediately after
-    triggerHeroJumble(200);
-  }, 900);
-}
-
-// ============================================
-// HERO JUMBLE ANIMATION — Words scramble in
-// ============================================
-function triggerHeroJumble(baseDelay) {
-  const words = document.querySelectorAll('.hero-jumble-word');
-
-  words.forEach((word, i) => {
-    const finalText = word.getAttribute('data-final') || word.textContent;
-    const letters = finalText.split('');
-
-    // Replace text content with letter spans
-    word.textContent = '';
-    word.style.opacity = '1';
-
-    letters.forEach((char, ci) => {
-      const span = document.createElement('span');
-      span.className = 'hero-letter-cell';
-      span.style.setProperty('--li', ci);
-      span.setAttribute('data-final', char);
-      span.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
-      word.appendChild(span);
-    });
-
-    // Start scramble for this word
-    const wordDelay = baseDelay + i * 300;
-
-    setTimeout(() => {
-      word.classList.add('hero-word-smash-in');
-
-      const cells = word.querySelectorAll('.hero-letter-cell');
-
-      // Scramble phase
-      let scrambleInt = setInterval(() => {
-        cells.forEach(cell => {
-          if (!cell.classList.contains('hero-letter-locked')) {
-            cell.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
-          }
-        });
-      }, 40);
-
-      // Lock letters one by one
-      cells.forEach((cell, ci) => {
-        setTimeout(() => {
-          const finalChar = cell.getAttribute('data-final');
-          cell.textContent = finalChar;
-          cell.classList.add('hero-letter-locked');
-          cell.classList.add('hero-letter-slam');
-
-          if (ci === cells.length - 1) {
-            clearInterval(scrambleInt);
-          }
-        }, 400 + ci * 80);
-      });
-    }, wordDelay);
-  });
-
-  // Animate other hero elements
-  const heroAnims = document.querySelectorAll('.hero-anim');
-  heroAnims.forEach((el) => {
-    const order = parseInt(el.style.getPropertyValue('--anim-order') || '0');
-    el.style.animationDelay = `${baseDelay + 2200 + order * 120}ms`;
-    el.classList.add('hero-anim-active');
-  });
+  initIntroVideo();
 }

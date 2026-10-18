@@ -57,14 +57,14 @@ export function renderMarket() {
           <span class="badge-dot"></span>
           <span>AGRIFY MANDI INTELLIGENCE ENGINE</span>
         </div>
-        <h1 class="market-title">📊 Real-Time Mandi Market Intelligence</h1>
+        <h1 class="market-title">📊 Mandi Market Prices</h1>
         <p class="market-subtitle">
-          Live wholesale market (mandi) commodity arrivals and modal prices across Telangana, Andhra Pradesh, and national agricultural markets.
+          Look up current wholesale market prices from Agmarknet when the provider is available. Reference estimates are not presented as live observations.
         </p>
         <div class="market-trust-strip">
-          <span class="trust-pill"><span class="pill-icon">🏛️</span> Agmarknet & data.gov.in Verified</span>
+          <span class="trust-pill"><span class="pill-icon">🏛️</span> Agmarknet / data.gov.in source</span>
           <span class="trust-pill"><span class="pill-icon">⚖️</span> Modal, Min & Max Pricing</span>
-          <span class="trust-pill"><span class="pill-icon">📈</span> District Volatility Analytics</span>
+          <span class="trust-pill"><span class="pill-icon">📈</span> Mandi comparison</span>
           <span class="trust-pill"><span class="pill-icon">📋</span> MSP Benchmark Protection</span>
         </div>
       </div>
@@ -148,7 +148,7 @@ export function renderMarket() {
             <select class="form-select" id="market-district-select">
               ${TELANGANA_DISTRICTS.map(d => `<option value="${d}">${d || '— All Districts —'}</option>`).join('')}
             </select>
-            <input type="text" class="form-input" id="market-district-input" placeholder="e.g. Hyderabad, Guntur" style="display:none;" />
+            <input type="text" class="form-input" id="market-district-input" aria-label="District" placeholder="e.g. Hyderabad, Guntur" style="display:none;" />
           </div>
           <div class="form-group market-search-action">
             <button class="btn btn-primary btn-full" id="market-search-btn">📡 Fetch Live Prices</button>
@@ -312,6 +312,18 @@ async function searchMarket() {
     if (result.error) throw new Error(result.error);
 
     const markets = result.markets || [];
+
+    if (result.data_quality === 'unavailable' || result.is_fallback) {
+      document.getElementById('market-results').innerHTML = `
+        <div class="card market-empty-card" role="status" style="margin-bottom:var(--sp-xl);">
+          <div style="font-size:2.2rem;margin-bottom:var(--sp-md);">📡</div>
+          <h3 class="market-empty-title">Current market data unavailable</h3>
+          <p class="market-empty-desc">${result.data_quality_note || 'Agmarknet did not return current prices. No estimated prices are shown.'}</p>
+          ${result.fetch_timestamp ? `<p class="market-empty-desc">Last checked: ${new Date(result.fetch_timestamp).toLocaleString()}</p>` : ''}
+        </div>
+      `;
+      return;
+    }
 
     let html = '';
 

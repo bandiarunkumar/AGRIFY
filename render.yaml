@@ -1,0 +1,79 @@
+# ==============================================================
+# AGRIFY Render Blueprint — Staging Backend Services
+# ==============================================================
+# Isolated staging deployment configuration for Render.
+# Existing production services (agri-connect-main-app, agri-connect-image)
+# are kept separate and untouched.
+#
+# Usage:
+#   1. In Render Dashboard → Blueprints → New Blueprint Instance.
+#   2. Select the repository and choose branch (e.g. 'staging').
+#   3. Render auto-provisions:
+#      - agri-connect-main-app-staging (Flask Core Backend)
+#      - agri-connect-image-staging    (Crop Doctor Microservice)
+#      - agrify-db-staging             (PostgreSQL Managed Database)
+#   4. After deployment, configure ALLOWED_ORIGINS with the exact
+#      Vercel staging domain in the Render Dashboard.
+# ==============================================================
+
+services:
+  # -----------------------------------------------------------
+  # Flask Core Backend (API, Farm Persistence, Agent) — STAGING
+  # -----------------------------------------------------------
+  - type: web
+    name: agri-connect-main-app-staging
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn api:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /api/health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.12.3"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agrify-db-staging
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      # --- Set via Render Dashboard for staging frontend domain ---
+      # ALLOWED_ORIGINS     (e.g. https://<your-staging-subdomain>.vercel.app)
+      # FRONTEND_URL        (e.g. https://<your-staging-subdomain>.vercel.app)
+      # CROP_DOCTOR_SERVICE_URL (https://agri-connect-image-staging.onrender.com)
+      # GEMINI_API_KEY      (optional, for live AI Agent tests)
+      # OPENAI_API_KEY      (optional, fallback AI)
+      # OPENWEATHERMAP_API_KEY (optional, live weather ETL)
+      # NEWSAPI_KEY         (optional, live news feed)
+
+  # -----------------------------------------------------------
+  # TensorFlow Crop Doctor Microservice — STAGING
+  # -----------------------------------------------------------
+  - type: web
+    name: agri-connect-image-staging
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: image_detection
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 180
+    healthCheckPath: /
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      # --- Set via Render Dashboard for staging frontend domain ---
+      # ALLOWED_ORIGINS     (e.g. https://<your-staging-subdomain>.vercel.app)
+      # FRONTEND_URL        (e.g. https://<your-staging-subdomain>.vercel.app)
+
+# -----------------------------------------------------------
+# PostgreSQL Managed Database — STAGING
+# -----------------------------------------------------------
+databases:
+  - name: agrify-db-staging
+    plan: free
+    region: oregon
+    databaseName: agriconnect_staging
+    user: agrify_staging

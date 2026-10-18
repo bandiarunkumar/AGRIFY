@@ -6,6 +6,7 @@ Coordinate-first, source-aware, no fake data in main flow.
 import os
 import json
 import hashlib
+import math
 from datetime import datetime, timezone
 
 import requests
@@ -20,11 +21,33 @@ try:
 except ImportError:
     genai = None
 
-# ---- Conditional DB import (works without DB too) ----
-USE_DB = bool(os.getenv('DATABASE_URL'))
-if USE_DB:
-    from models.database import db, FarmProfile, WeatherSnapshot, SoilSummary, CropRecommendation, AgricultureNews, FarmAlert
-    from sqlalchemy.exc import IntegrityError
+# ---- Database & Persistence Setup ----
+import database_config
+from auth import (
+    generate_owner_token,
+    hash_owner_token,
+    verify_owner_token,
+    extract_bearer_or_header_token,
+)
+from models.database import (
+    db,
+    FarmProfile,
+    WeatherSnapshot,
+    WeatherForecast,
+    SoilSummary,
+    CropRecommendation,
+    DistrictCropHistory,
+    SatelliteSummary,
+    AgricultureNews,
+    DiseaseDetection,
+    FarmAlert,
+    FarmActionPlan,
+)
+from sqlalchemy.exc import IntegrityError
+
+DATABASE_URI = database_config.get_database_uri()
+USE_DB = bool(DATABASE_URI)
+
 
 # ---- ETL Modules ----
 from etl.weather_etl import get_weather_by_coords, get_forecast_by_coords, get_weather_by_city, get_forecast_by_city
@@ -38,7 +61,8 @@ from alerts.alert_engine import generate_farm_alerts
 from predictions import predict_crop, predict_fertilizer, REGION_SOIL_PROFILES
 from config import (
     MARKET_LOCATIONS, VEGETABLE_PRICES, CROP_PRICES,
-    PESTICIDE_EFFECTS, FERTILIZER_EFFECTS, SOIL_REMEDIATION
+    PESTICIDE_EFFECTS, FERTILIZER_EFFECTS, SOIL_REMEDIATION,
+    PEST_DATABASE, DEFAULT_PEST_INFO
 )
 
 import random
@@ -287,14 +311,103 @@ def get_feasible_crops(temperature, humidity, ph, rainfall, N, P, K, region, sea
 
 
 app = Flask(__name__)
-CORS(app, origins="*")
 
-if USE_DB:
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    db.init_app(app)
+
+def get_allowed_origins():
+    """
+    Resolve allowed CORS origins from environment variables.
+    Supports ALLOWED_ORIGINS (comma-separated list) and FRONTEND_URL.
+    In development, safely permits localhost and 127.0.0.1 development ports by default.
+    In production, strictly restricts to configured domains.
+    """
+    default_dev_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+        "http://localhost:5001",
+        "http://127.0.0.1:5001",
+    ]
+    env_allowed = os.getenv("ALLOWED_ORIGINS", "").strip()
+    frontend_url = os.getenv("FRONTEND_URL", "").strip()
+    is_prod = os.getenv("FLASK_ENV", "").lower() == "production"
+
+    origins = []
+    if env_allowed:
+        origins.extend([o.strip() for o in env_allowed.split(",") if o.strip()])
+    if frontend_url and frontend_url not in origins:
+        origins.append(frontend_url)
+
+    if not is_prod:
+        for dev_origin in default_dev_origins:
+            if dev_origin not in origins:
+                origins.append(dev_origin)
+    elif not origins:
+        # SECURITY: In production, do NOT silently fall back to dev localhost origins.
+        # Log a warning so operators know CORS is blocking all cross-origin requests.
+        import logging
+        logging.getLogger(__name__).warning(
+            "CORS: No ALLOWED_ORIGINS or FRONTEND_URL configured in production mode. "
+            "All cross-origin requests will be blocked. Set ALLOWED_ORIGINS or FRONTEND_URL."
+        )
+        origins = []
+
+    return origins
+
+
+CORS(app, origins=get_allowed_origins())
+
+
+def _parse_coordinates(lat_value, lon_value):
+    """Parse finite WGS84 coordinates, rejecting invalid values before I/O."""
+    try:
+        lat = float(lat_value)
+        lon = float(lon_value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(lat) or not math.isfinite(lon):
+        return None
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return None
+    return lat, lon
+
+
+def _validate_optional_numbers(data, ranges):
+    """Validate present numeric form fields without accepting NaN or infinity."""
+    for field, (minimum, maximum) in ranges.items():
+        if field not in data or data[field] is None:
+            continue
+        if isinstance(data[field], bool):
+            return f"{field} must be a finite number"
+        try:
+            value = float(data[field])
+        except (TypeError, ValueError):
+            return f"{field} must be a finite number"
+        if not math.isfinite(value) or value < minimum or value > maximum:
+            return f"{field} must be between {minimum} and {maximum}"
+    return None
+
+def is_db_available():
+    """Check if a persistent database is configured and enabled in environment or testing."""
+    if app.config.get("TESTING") and app.config.get("SQLALCHEMY_DATABASE_URI"):
+        return True
+    return bool(database_config.get_database_uri())
+
+# Configure and bind database extension at application initialization
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI or "sqlite:///:memory:"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = database_config.get_sqlalchemy_engine_options(app.config['SQLALCHEMY_DATABASE_URI'])
+db.init_app(app)
+
+if DATABASE_URI:
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as e:
+            app.logger.warning(f"Database init note: {e}")
+
 
 
 # ============================================================
@@ -306,9 +419,10 @@ def health():
         "status": "healthy",
         "app": "Agri-Connect API",
         "version": "3.0-production",
-        "database": "connected" if USE_DB else "disabled (no DATABASE_URL)",
+        "database": "connected" if is_db_available() else "disabled (no DATABASE_URL)",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
+
 
 
 # ============================================================
@@ -352,14 +466,10 @@ def translate_text():
 @app.route("/api/weather/coords", methods=["GET"])
 def weather_by_coords():
     """Fetch current weather by GPS coordinates."""
-    try:
-        lat = float(request.args.get("lat", ""))
-        lon = float(request.args.get("lon", ""))
-    except (TypeError, ValueError):
-        return jsonify({"error": "lat and lon required as numbers"}), 400
-
-    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-        return jsonify({"error": "Invalid coordinates"}), 400
+    coordinates = _parse_coordinates(request.args.get("lat"), request.args.get("lon"))
+    if coordinates is None:
+        return jsonify({"error": "Valid latitude and longitude are required"}), 400
+    lat, lon = coordinates
 
     result = get_weather_by_coords(lat, lon)
     if "error" in result:
@@ -370,11 +480,10 @@ def weather_by_coords():
 @app.route("/api/forecast/coords", methods=["GET"])
 def forecast_by_coords():
     """Fetch 5-day forecast by GPS coordinates."""
-    try:
-        lat = float(request.args.get("lat", ""))
-        lon = float(request.args.get("lon", ""))
-    except (TypeError, ValueError):
-        return jsonify({"error": "lat and lon required as numbers"}), 400
+    coordinates = _parse_coordinates(request.args.get("lat"), request.args.get("lon"))
+    if coordinates is None:
+        return jsonify({"error": "Valid latitude and longitude are required"}), 400
+    lat, lon = coordinates
 
     result = get_forecast_by_coords(lat, lon)
     if "error" in result:
@@ -415,11 +524,10 @@ def forecast_by_city():
 @app.route("/api/geocode/reverse", methods=["GET"])
 def geocode_reverse():
     """Convert GPS coordinates to location name."""
-    try:
-        lat = float(request.args.get("lat", ""))
-        lon = float(request.args.get("lon", ""))
-    except (TypeError, ValueError):
-        return jsonify({"error": "lat and lon required"}), 400
+    coordinates = _parse_coordinates(request.args.get("lat"), request.args.get("lon"))
+    if coordinates is None:
+        return jsonify({"error": "Valid latitude and longitude are required"}), 400
+    lat, lon = coordinates
 
     result = reverse_geocode(lat, lon)
     return jsonify(result)
@@ -431,20 +539,309 @@ def geocode_reverse():
 @app.route("/api/soil/coords", methods=["GET"])
 def soil_by_coords():
     """Fetch real soil data by GPS coordinates from SoilGrids."""
-    try:
-        lat = float(request.args.get("lat", ""))
-        lon = float(request.args.get("lon", ""))
-    except (TypeError, ValueError):
-        return jsonify({"error": "lat and lon required"}), 400
+    coordinates = _parse_coordinates(request.args.get("lat"), request.args.get("lon"))
+    if coordinates is None:
+        return jsonify({"error": "Valid latitude and longitude are required"}), 400
+    lat, lon = coordinates
 
     result = get_soil_by_coords(lat, lon)
     return jsonify(result)
 
 
 # ============================================================
+# FARM PROFILE & PERSISTENT INTELLIGENCE
+# ============================================================
+@app.route("/api/farm/profile", methods=["POST"])
+def create_or_update_farm_profile():
+    """
+    Create or update a persistent farm profile.
+    Generates a secure owner token on registration. The hash is persisted;
+    the plaintext token is returned only once to the client.
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data:
+        return jsonify({"error": "JSON body required"}), 400
+
+    lat = data.get("latitude")
+    lon = data.get("longitude")
+    if lat is None or lon is None:
+        return jsonify({"error": "latitude and longitude required"}), 400
+
+    coordinates = _parse_coordinates(lat, lon)
+    if coordinates is None:
+        return jsonify({"error": "Valid latitude and longitude are required"}), 400
+    lat, lon = coordinates
+
+    farmer_name = str(data.get("farmer_name", "")).strip()
+    try:
+        acres = float(data.get("area_acres", 1.0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "area_acres must be a number"}), 400
+    if not math.isfinite(acres) or acres <= 0 or acres > 100000:
+        return jsonify({"error": "area_acres must be greater than 0 and at most 100000"}), 400
+
+    if not is_db_available():
+        stateless_uid = f"stateless_{lat:.4f}_{lon:.4f}"
+        return jsonify({
+            "farm_uid": stateless_uid,
+            "farmer_name": farmer_name,
+            "owner_token": None,
+            "stateless": True,
+            "message": "Stateless mode: database not configured.",
+        }), 200
+
+    import hashlib
+    default_uid = f"farm_{hashlib.sha256(f'{lat:.6f}_{lon:.6f}_{farmer_name}'.encode()).hexdigest()[:16]}"
+    farm_uid = str(data.get("farm_uid", default_uid)).strip()
+
+    existing_farm = FarmProfile.query.filter_by(farm_uid=farm_uid).first()
+    if existing_farm:
+        token = extract_bearer_or_header_token(request) or data.get("owner_token")
+        if not token or not verify_owner_token(token, existing_farm.owner_token_hash):
+            return jsonify({"error": "Farm profile already exists. Valid owner_token required to update."}), 403
+
+        if farmer_name:
+            existing_farm.farmer_name = farmer_name
+        existing_farm.latitude = lat
+        existing_farm.longitude = lon
+        existing_farm.area_acres = acres
+        if "village" in data:
+            existing_farm.village = data.get("village")
+        if "taluk" in data:
+            existing_farm.taluk = data.get("taluk")
+        if "district" in data:
+            existing_farm.district = data.get("district")
+        if "state" in data:
+            existing_farm.state = data.get("state")
+        if "pincode" in data:
+            existing_farm.pincode = data.get("pincode")
+
+        try:
+            db.session.commit()
+            return jsonify({
+                "farm_uid": existing_farm.farm_uid,
+                "farmer_name": existing_farm.farmer_name,
+                "message": "Farm profile updated successfully.",
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": f"Failed to update farm profile: {str(e)}"}), 500
+
+    owner_token = generate_owner_token()
+    owner_token_hash = hash_owner_token(owner_token)
+
+    new_farm = FarmProfile(
+        farm_uid=farm_uid,
+        farmer_name=farmer_name,
+        latitude=lat,
+        longitude=lon,
+        area_acres=acres,
+        village=data.get("village"),
+        taluk=data.get("taluk"),
+        district=data.get("district"),
+        state=data.get("state"),
+        country=data.get("country", "India"),
+        pincode=data.get("pincode"),
+        owner_token_hash=owner_token_hash,
+    )
+    try:
+        db.session.add(new_farm)
+        db.session.commit()
+        return jsonify({
+            "farm_uid": new_farm.farm_uid,
+            "farmer_name": new_farm.farmer_name,
+            "owner_token": owner_token,
+            "message": "Farm profile created successfully. Store owner_token securely to access your farm history.",
+        }), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Farm profile with this UID already exists"}), 409
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to create farm profile: {str(e)}"}), 500
+
+
+@app.route("/api/farm/profile/<farm_uid>", methods=["GET"])
+def get_farm_profile(farm_uid):
+    """Retrieve farm profile metadata, protected by owner token."""
+    if not is_db_available():
+        return jsonify({"error": "Farm persistence not enabled"}), 404
+
+    token = extract_bearer_or_header_token(request)
+    if not token:
+        return jsonify({"error": "Authentication token required via X-Farm-Token or Authorization header"}), 401
+
+    farm = FarmProfile.query.filter_by(farm_uid=farm_uid).first()
+    if not farm:
+        return jsonify({"error": "Farm profile not found"}), 404
+
+    if not verify_owner_token(token, farm.owner_token_hash):
+        return jsonify({"error": "Forbidden: invalid owner token for this farm"}), 403
+
+    return jsonify(farm.to_dict()), 200
+
+
+@app.route("/api/farm/history/<farm_uid>", methods=["GET"])
+def get_farm_history(farm_uid):
+    """Retrieve comprehensive agronomic history for a verified farm."""
+    if not is_db_available():
+        return jsonify({"error": "Farm persistence not enabled"}), 404
+
+    token = extract_bearer_or_header_token(request)
+    if not token:
+        return jsonify({"error": "Authentication token required via X-Farm-Token or Authorization header"}), 401
+
+    farm = FarmProfile.query.filter_by(farm_uid=farm_uid).first()
+    if not farm:
+        return jsonify({"error": "Farm profile not found"}), 404
+
+    if not verify_owner_token(token, farm.owner_token_hash):
+        return jsonify({"error": "Forbidden: invalid owner token for this farm"}), 403
+
+    recommendations = (
+        CropRecommendation.query.filter_by(farm_id=farm.id)
+        .order_by(CropRecommendation.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    action_plans = (
+        FarmActionPlan.query.filter_by(farm_id=farm.id)
+        .order_by(FarmActionPlan.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    weather_snapshots = (
+        WeatherSnapshot.query.filter_by(farm_id=farm.id)
+        .order_by(WeatherSnapshot.fetch_timestamp.desc())
+        .limit(10)
+        .all()
+    )
+    soil_summaries = (
+        SoilSummary.query.filter_by(farm_id=farm.id)
+        .order_by(SoilSummary.fetch_timestamp.desc())
+        .limit(10)
+        .all()
+    )
+
+    return jsonify({
+        "farm": farm.to_dict(),
+        "crop_recommendations": [r.to_dict() for r in recommendations],
+        "action_plans": [a.to_dict() for a in action_plans],
+        "weather_snapshots": [w.to_dict() for w in weather_snapshots],
+        "soil_summaries": [s.to_dict() for s in soil_summaries],
+    }), 200
+
+
+@app.route("/api/farm/action-plans/<farm_uid>", methods=["GET"])
+def get_farm_action_plans(farm_uid):
+    """Retrieve historical action plans for a verified farm."""
+    if not is_db_available():
+        return jsonify({"error": "Farm persistence not enabled"}), 404
+
+    token = extract_bearer_or_header_token(request)
+    if not token:
+        return jsonify({"error": "Authentication token required via X-Farm-Token or Authorization header"}), 401
+
+    farm = FarmProfile.query.filter_by(farm_uid=farm_uid).first()
+    if not farm:
+        return jsonify({"error": "Farm profile not found"}), 404
+
+    if not verify_owner_token(token, farm.owner_token_hash):
+        return jsonify({"error": "Forbidden: invalid owner token for this farm"}), 403
+
+    plans = (
+        FarmActionPlan.query.filter_by(farm_id=farm.id)
+        .order_by(FarmActionPlan.created_at.desc())
+        .all()
+    )
+    return jsonify({
+        "farm_uid": farm.farm_uid,
+        "action_plans": [p.to_dict() for p in plans],
+    }), 200
+
+
+@app.route("/api/farm/profile/<farm_uid>/rotate-token", methods=["POST"])
+def rotate_farm_token(farm_uid):
+    """
+    Safely rotate owner token for a verified farm profile.
+    Requires current valid owner token; generates and returns a new token,
+    immediately invalidating the old token hash.
+    """
+    if not is_db_available():
+        return jsonify({"error": "Farm persistence not enabled"}), 404
+
+    token = extract_bearer_or_header_token(request)
+    if not token:
+        data = request.get_json(silent=True) or {}
+        token = data.get("owner_token")
+
+    if not token:
+        return jsonify({"error": "Current authentication token required via X-Farm-Token or Authorization header"}), 401
+
+    farm = FarmProfile.query.filter_by(farm_uid=farm_uid).first()
+    if not farm:
+        return jsonify({"error": "Farm profile not found"}), 404
+
+    if not verify_owner_token(token, farm.owner_token_hash):
+        return jsonify({"error": "Forbidden: invalid current owner token"}), 403
+
+    new_token = generate_owner_token()
+    farm.owner_token_hash = hash_owner_token(new_token)
+
+    try:
+        db.session.commit()
+        return jsonify({
+            "farm_uid": farm.farm_uid,
+            "owner_token": new_token,
+            "message": "Owner token successfully rotated. Store new token securely; previous token is invalidated.",
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to rotate token: {str(e)}"}), 500
+
+
+@app.route("/api/farm/profile/<farm_uid>", methods=["DELETE"])
+def delete_farm_profile(farm_uid):
+    """
+    Permanently delete a farm profile and all linked records (GDPR / DPDP data erasure).
+    Protected by owner token. Cascades to recommendations, action plans, weather, and soil.
+    """
+    if not is_db_available():
+        return jsonify({"error": "Farm persistence not enabled"}), 404
+
+    token = extract_bearer_or_header_token(request)
+    if not token:
+        data = request.get_json(silent=True) or {}
+        token = data.get("owner_token")
+
+    if not token:
+        return jsonify({"error": "Authentication token required via X-Farm-Token or Authorization header"}), 401
+
+    farm = FarmProfile.query.filter_by(farm_uid=farm_uid).first()
+    if not farm:
+        return jsonify({"error": "Farm profile not found"}), 404
+
+    if not verify_owner_token(token, farm.owner_token_hash):
+        return jsonify({"error": "Forbidden: invalid owner token for this farm"}), 403
+
+    try:
+        db.session.delete(farm)
+        db.session.commit()
+        return jsonify({
+            "farm_uid": farm_uid,
+            "message": "Farm profile and all associated agronomic records permanently deleted.",
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to delete farm profile: {str(e)}"}), 500
+
+
+# ============================================================
 # FULL FARM ANALYSIS (Coordinates-first)
 # ============================================================
 @app.route("/api/farm/analyze", methods=["POST"])
+
+
 def farm_analyze():
     """
     Complete farm analysis using GPS coordinates.
@@ -457,8 +854,16 @@ def farm_analyze():
     7. Alert generation
     """
     data = request.get_json()
-    if not data:
+    if not isinstance(data, dict) or not data:
         return jsonify({"error": "JSON body required"}), 400
+
+    numeric_error = _validate_optional_numbers(data, {
+        "area_acres": (0, 100000), "N": (0, 10000), "P": (0, 10000), "K": (0, 10000),
+        "ph": (0, 14), "soil_moisture": (0, 100), "organic_carbon": (0, 100),
+        "annual_rainfall_mm": (0, 20000), "yield_last": (0, 1000000),
+    })
+    if numeric_error:
+        return jsonify({"error": numeric_error}), 400
 
     lat = data.get("latitude")
     lon = data.get("longitude")
@@ -466,14 +871,20 @@ def farm_analyze():
     if lat is None or lon is None:
         return jsonify({"error": "latitude and longitude required"}), 400
 
-    try:
-        lat = float(lat)
-        lon = float(lon)
-    except ValueError:
-        return jsonify({"error": "latitude and longitude must be numbers"}), 400
+    coordinates = _parse_coordinates(lat, lon)
+    if coordinates is None:
+        return jsonify({"error": "Valid latitude and longitude are required"}), 400
+    lat, lon = coordinates
 
-    acres = float(data.get("area_acres", 1.0))
+    try:
+        acres = float(data.get("area_acres", 1.0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "area_acres must be a number"}), 400
+    if not math.isfinite(acres) or not (0 < acres <= 100000):
+        return jsonify({"error": "area_acres must be greater than 0 and at most 100000"}), 400
     season = data.get("season", "Kharif")
+    if not isinstance(season, str) or season not in {"Kharif", "Rabi", "Zaid"}:
+        return jsonify({"error": "season must be Kharif, Rabi, or Zaid"}), 400
     # Auto-detect region from coordinates if not provided
     region = data.get("region")
     if not region:
@@ -495,6 +906,18 @@ def farm_analyze():
     yield_last = float(data.get("yield_last", 3000))
     farmer_name = data.get("farmer_name", "")
 
+    # Upfront authorization check if persisting to an existing farm profile
+    target_farm = None
+    if is_db_available() and data.get("farm_uid"):
+        target_uid = str(data.get("farm_uid")).strip()
+        target_farm = FarmProfile.query.filter_by(farm_uid=target_uid).first()
+        if not target_farm:
+            return jsonify({"error": f"Farm profile '{target_uid}' not found"}), 404
+
+        auth_token = extract_bearer_or_header_token(request) or data.get("owner_token")
+        if not auth_token or not verify_owner_token(auth_token, target_farm.owner_token_hash):
+            return jsonify({"error": "Forbidden: invalid owner token for this farm"}), 403
+
     response = {
         "request": {
             "latitude": lat, "longitude": lon,
@@ -503,6 +926,7 @@ def farm_analyze():
         },
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
 
     # 1. GEOCODING
     geo = reverse_geocode(lat, lon)
@@ -679,7 +1103,19 @@ def farm_analyze():
 
     scored.sort(key=lambda x: -x["suitability_score"])
 
-    top_3 = scored[:3]
+    # Ensure top_3 has diverse crops by deduplicating botanical aliases (e.g. mirchi -> chilli)
+    deduped_top_3 = []
+    seen_canonical = set()
+    crop_aliases = {"mirchi": "chilli"}
+    for item in scored:
+        canonical = crop_aliases.get(item["crop"], item["crop"])
+        if canonical not in seen_canonical:
+            seen_canonical.add(canonical)
+            deduped_top_3.append(item)
+            if len(deduped_top_3) == 3:
+                break
+
+    top_3 = deduped_top_3
     all_feasible = scored
 
     response["crop_recommendation"] = {
@@ -693,6 +1129,21 @@ def farm_analyze():
             "season": season, "region": region,
         }
     }
+    soil_quality = soil.get("data_quality", "unavailable")
+    weather_available = bool(weather.get("ok"))
+    recommendation_is_estimated = (
+        not weather_available
+        or soil_quality in {"estimated", "user_entered", "unavailable"}
+        or bool(soil.get("fallback"))
+    )
+    response["crop_recommendation"]["data_quality"] = "estimated" if recommendation_is_estimated else "live"
+    response["crop_recommendation"]["data_quality_note"] = (
+        "Weather was unavailable, so regional fallback values were used for ranking; soil inputs may also be modeled. Treat this as a preliminary estimate."
+        if not weather_available else
+        "Soil values are modeled or farmer-entered. Use a lab report and local agronomist advice to refine this recommendation."
+        if recommendation_is_estimated else
+        "Weather and soil providers returned data for this request."
+    )
 
     # 5. FERTILIZER RECOMMENDATION
     best_crop_name = top_3[0]["crop"] if top_3 else "rice"
@@ -827,17 +1278,169 @@ def farm_analyze():
     )
     response["alerts"] = alerts
 
+
+    if target_farm:
+        try:
+            import json
+            # 1. Weather Snapshot
+            weather_row = WeatherSnapshot(
+                farm_id=target_farm.id,
+                latitude=lat,
+                longitude=lon,
+                temperature_c=float(temperature),
+                humidity_pct=float(humidity),
+                source_url="api.openweathermap.org",
+                data_quality=response.get("weather", {}).get("data_quality", "live"),
+            )
+            db.session.add(weather_row)
+
+            # 2. Soil Summary
+            soil_row = SoilSummary(
+                farm_id=target_farm.id,
+                latitude=lat,
+                longitude=lon,
+                nitrogen_mg_kg=float(N),
+                phosphorus_mg_kg=float(P),
+                potassium_cmolkg=float(K),
+                soil_ph=float(ph),
+                organic_carbon_dg_kg=float(organic_carbon),
+                soil_type=soil.get("soil_type", "Loamy") if isinstance(soil, dict) else "Loamy",
+                data_quality=soil.get("data_quality", "estimated") if isinstance(soil, dict) else "estimated",
+            )
+            db.session.add(soil_row)
+
+            # 3. Crop Recommendation
+            rec_row = CropRecommendation(
+                farm_id=target_farm.id,
+                latitude=lat,
+                longitude=lon,
+                season=season,
+                district=geo.get("district", "") if isinstance(geo, dict) else "",
+                top_crops_json=json.dumps(top_3),
+                all_feasible_json=json.dumps(all_feasible),
+                temperature_c=float(temperature),
+                humidity_pct=float(humidity),
+                soil_n=float(N),
+                soil_p=float(P),
+                soil_k=float(K),
+                soil_ph=float(ph),
+                rainfall_mm=float(rainfall),
+                soil_moisture=float(soil_moisture),
+                model_version="3.0-hybrid",
+                data_quality=response["crop_recommendation"]["data_quality"],
+            )
+            db.session.add(rec_row)
+
+            db.session.commit()
+
+            response["persistence"] = {
+                "persisted": True,
+                "farm_uid": target_farm.farm_uid,
+                "crop_recommendation_id": rec_row.id,
+            }
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Transaction rollback during farm analysis persistence: {e}")
+            return jsonify({"error": "Failed to persist farm analysis due to database transaction error"}), 500
+    else:
+        response["persistence"] = {"persisted": False}
+
     return jsonify(response)
 
 
+
+
 # ============================================================
-# CROP PREDICTION (ML-only — legacy endpoint)
+# CROP PREDICTION (Backward-compatible legacy endpoint)
 # ============================================================
+def _evaluate_agronomic_crops(N, P, K, temperature, humidity, ph, rainfall, region=None, season=None):
+    """
+    Evaluate crop suitability using the active agronomic feasibility engine (CROP_PROFILES).
+    Produces a ranked list of recommended crops matching the legacy predict_crop contract.
+    """
+    feasible = get_feasible_crops(temperature, humidity, ph, rainfall, N, P, K, region, season)
+    if not feasible:
+        feasible = get_feasible_crops(temperature, humidity, ph, rainfall, N, P, K, region, None)
+    if not feasible:
+        # Distance-scored fallback across all supported crops
+        feasible = [
+            {"crop": name, "profile": prof, "region_match": True}
+            for name, prof in CROP_PROFILES.items()
+        ]
+
+    scored = []
+    for item in feasible:
+        crop = item["crop"]
+        profile = item["profile"]
+
+        # Calculate agronomic distance penalty
+        ideal_temp = (profile["min_temp"] + profile["max_temp"]) / 2
+        temp_dist = abs(temperature - ideal_temp)
+        temp_range = max(1, (profile["max_temp"] - profile["min_temp"]) / 2)
+        temp_penalty = min(20, (temp_dist / temp_range) * 10)
+
+        ideal_ph = (profile["min_ph"] + profile["max_ph"]) / 2
+        ph_dist = abs(ph - ideal_ph)
+        ph_range = max(0.1, (profile["max_ph"] - profile["min_ph"]) / 2)
+        ph_penalty = min(20, (ph_dist / ph_range) * 10)
+
+        min_rain = profile.get("min_rain", 0)
+        max_rain = profile.get("max_rain", 3000)
+        ideal_rain = (min_rain + max_rain) / 2
+        rain_dist = abs(rainfall - ideal_rain)
+        rain_range = max(1, (max_rain - min_rain) / 2)
+        rain_penalty = min(20, (rain_dist / rain_range) * 10)
+
+        n_req = profile.get("min_n", 0)
+        n_penalty = 0 if N >= n_req else min(20, ((n_req - N) / max(1, n_req)) * 20)
+
+        base_score = 85 - temp_penalty - ph_penalty - rain_penalty - n_penalty
+        suitability = round(min(99.0, max(5.0, base_score)), 2)
+
+        from config import CROP_BASE_YIELD, LABOR_COST_PER_HECTARE, OTHER_COST_PER_HECTARE
+        price_per_kg = CROP_PRICES.get(crop, 25)
+        base_yield = CROP_BASE_YIELD.get(crop, 2000)
+        gross_income = base_yield * price_per_kg
+        fertilizer_cost = 3000
+        seed_cost = 2000
+        total_cost = fertilizer_cost + seed_cost + LABOR_COST_PER_HECTARE + OTHER_COST_PER_HECTARE
+        net_profit = max(0, gross_income - total_cost)
+
+        profit_info = {
+            "estimated_yield_kg_per_ha": base_yield,
+            "price_per_kg": price_per_kg,
+            "gross_income": gross_income,
+            "total_cost": total_cost,
+            "net_profit": net_profit,
+            "cost_breakdown": {
+                "fertilizer": fertilizer_cost,
+                "seeds": seed_cost,
+                "labor": LABOR_COST_PER_HECTARE,
+                "other": OTHER_COST_PER_HECTARE
+            }
+        }
+        pest_info = PEST_DATABASE.get(crop, DEFAULT_PEST_INFO)
+
+        scored.append({
+            "crop": crop,
+            "confidence": suitability,
+            "profit": profit_info,
+            "pests": pest_info,
+        })
+
+    scored.sort(key=lambda x: x["confidence"], reverse=True)
+    return scored
+
+
 @app.route("/api/predict/crop", methods=["POST"])
 def crop_prediction():
+    """
+    Crop prediction endpoint (backward-compatible legacy route).
+    Delegates to the active rule-based ICAR agronomic feasibility engine (CROP_PROFILES).
+    """
     try:
         data = request.get_json()
-        if not data:
+        if not isinstance(data, dict) or not data:
             return jsonify({"error": "No data provided"}), 400
 
         required = ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]
@@ -845,30 +1448,74 @@ def crop_prediction():
         if missing:
             return jsonify({"error": f"Missing fields: {missing}"}), 400
 
-        result = predict_crop(
-            N=float(data["N"]), P=float(data["P"]), K=float(data["K"]),
-            temperature=float(data["temperature"]), humidity=float(data["humidity"]),
-            ph=float(data["ph"]), rainfall=float(data["rainfall"])
+        numeric_values = {}
+        for f in required:
+            val = data[f]
+            if isinstance(val, bool):
+                return jsonify({"error": f"Invalid number for field: {f}"}), 400
+            try:
+                parsed = float(val)
+                if not math.isfinite(parsed):
+                    return jsonify({"error": f"Invalid number for field: {f}"}), 400
+                numeric_values[f] = parsed
+            except (TypeError, ValueError) as e:
+                return jsonify({"error": f"Invalid number: {str(e)}"}), 400
+
+        region = data.get("region")
+        season = data.get("season")
+
+        ranked = _evaluate_agronomic_crops(
+            N=numeric_values["N"],
+            P=numeric_values["P"],
+            K=numeric_values["K"],
+            temperature=numeric_values["temperature"],
+            humidity=numeric_values["humidity"],
+            ph=numeric_values["ph"],
+            rainfall=numeric_values["rainfall"],
+            region=str(region) if region else None,
+            season=str(season) if season else None,
         )
 
-        if "error" in result:
-            return jsonify(result), 500
-        return jsonify(result)
+        if not ranked:
+            return jsonify({"error": "No crops match given parameters"}), 500
 
-    except ValueError as e:
+        return jsonify({
+            "status": "success",
+            "best_crop": ranked[0],
+            "alternatives": ranked[1:5],
+            "input_summary": {
+                "N": numeric_values["N"],
+                "P": numeric_values["P"],
+                "K": numeric_values["K"],
+                "temperature": numeric_values["temperature"],
+                "humidity": numeric_values["humidity"],
+                "ph": numeric_values["ph"],
+                "rainfall": numeric_values["rainfall"],
+            },
+            "engine": "agronomic_feasibility_v3",
+            "advisory_note": "Recommendations generated via deterministic ICAR/agronomic feasibility rules (ML model retired)."
+        })
+
+    except (TypeError, ValueError) as e:
         return jsonify({"error": f"Invalid number: {str(e)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
 # ============================================================
-# FERTILIZER PREDICTION (ML-only — legacy endpoint)
+# FERTILIZER PREDICTION (Legacy endpoint — strict safety guardrail)
 # ============================================================
 @app.route("/api/predict/fertilizer", methods=["POST"])
 def fertilizer_prediction():
+    """
+    Fertilizer prediction endpoint (legacy route).
+    In accordance with AGRIFY strict agronomic safety guardrails, chemical dosages
+    are not fabricated without verified lab calibration.
+    Returns HTTP 503 structured unavailable response.
+    """
     try:
         data = request.get_json()
-        if not data:
+        if not isinstance(data, dict) or not data:
             return jsonify({"error": "No data provided"}), 400
 
         required = [
@@ -883,33 +1530,36 @@ def fertilizer_prediction():
         if missing:
             return jsonify({"error": f"Missing fields: {missing}"}), 400
 
-        result = predict_fertilizer(
-            soil_type=str(data["soil_type"]),
-            soil_ph=float(data["soil_ph"]),
-            soil_moisture=float(data["soil_moisture"]),
-            organic_carbon=float(data["organic_carbon"]),
-            electrical_conductivity=float(data["electrical_conductivity"]),
-            N=float(data["N"]), P=float(data["P"]), K=float(data["K"]),
-            temperature=float(data["temperature"]), humidity=float(data["humidity"]),
-            rainfall=float(data["rainfall"]),
-            crop_type=str(data["crop_type"]),
-            growth_stage=str(data["growth_stage"]),
-            season=str(data["season"]),
-            irrigation=str(data["irrigation"]),
-            previous_crop=str(data["previous_crop"]),
-            region=str(data["region"]),
-            fertilizer_usage=str(data["fertilizer_usage"]),
-            yield_last=float(data["yield_last"])
-        )
+        numeric_fields = [
+            "soil_ph", "soil_moisture", "organic_carbon", "electrical_conductivity",
+            "N", "P", "K", "temperature", "humidity", "rainfall", "yield_last"
+        ]
+        for f in numeric_fields:
+            val = data[f]
+            if isinstance(val, bool):
+                return jsonify({"error": f"Invalid number for field: {f}"}), 400
+            try:
+                parsed = float(val)
+                if not math.isfinite(parsed):
+                    return jsonify({"error": f"Invalid number for field: {f}"}), 400
+            except (TypeError, ValueError) as e:
+                return jsonify({"error": f"Invalid number: {str(e)}"}), 400
 
-        if "error" in result:
-            return jsonify(result), 500
-        return jsonify(result)
+        # Strict Agronomic Guardrail: Return structured unavailable response without dosage fabrication
+        return jsonify({
+            "status": "unavailable",
+            "error": "Fertilizer dosage prediction model is unavailable. In accordance with AGRIFY strict agronomic safety guardrails, chemical dosages are not fabricated without verified laboratory calibration.",
+            "service": "predict_fertilizer",
+            "model_status": "unverified_or_absent",
+            "crop_type": str(data["crop_type"]),
+            "advisory": "AGRIFY does not have a verified fertilizer dosage for this specific field. Please check your Farm Analyzer report or consult your local KVK (Krishi Vigyan Kendra) officer or agricultural extension officer before applying chemicals."
+        }), 503
 
-    except ValueError as e:
+    except (TypeError, ValueError) as e:
         return jsonify({"error": f"Invalid number: {str(e)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 
 # ============================================================
@@ -1029,12 +1679,20 @@ def market_prices():
     """Fetch real-time mandi prices from Agmarknet (data.gov.in)."""
     try:
         data = request.get_json()
-        if not data:
+        if not isinstance(data, dict) or not data:
             return jsonify({"error": "No data provided"}), 400
 
-        crop = data.get("crop", "").strip().lower()
-        state = data.get("state", "").strip() or data.get("location", "").strip() or None
-        district = data.get("district", "").strip() or None
+        crop_value = data.get("crop", "")
+        state_value = data.get("state", "")
+        location_value = data.get("location", "")
+        district_value = data.get("district", "")
+        if not all(isinstance(value, str) for value in (crop_value, state_value, location_value, district_value)):
+            return jsonify({"error": "crop and location filters must be text"}), 400
+        if any(len(value) > 100 for value in (crop_value, state_value, location_value, district_value)):
+            return jsonify({"error": "crop and location filters must be 100 characters or fewer"}), 400
+        crop = crop_value.strip().lower()
+        state = state_value.strip() or location_value.strip() or None
+        district = district_value.strip() or None
 
         if not crop:
             return jsonify({"error": "crop name required"}), 400
@@ -1081,7 +1739,7 @@ def market_prices():
             "min_price_per_kg": result.get("min_price_per_kg", 0),
             "max_price_per_kg": result.get("max_price_per_kg", 0),
             "avg_price_per_quintal": result.get("avg_price_per_quintal", 0),
-            "best_market": result.get("best_market", {}).get("name", ""),
+            "best_market": (result.get("best_market") or {}).get("name", ""),
             "data_quality": result.get("data_quality", "reference"),
             "data_quality_note": result.get("data_quality_note", ""),
             "source_name": result.get("source_name", "agmarknet_data_gov_in"),
@@ -1099,8 +1757,15 @@ def market_prices_by_state():
     state = request.args.get("state", "").strip()
     if not state:
         return jsonify({"error": "state parameter required"}), 400
+    if len(state) > 100:
+        return jsonify({"error": "state must be 100 characters or fewer"}), 400
 
-    limit = min(int(request.args.get("limit", 50)), 100)
+    try:
+        limit = int(request.args.get("limit", 50))
+    except ValueError:
+        return jsonify({"error": "limit must be an integer from 1 to 100"}), 400
+    if not 1 <= limit <= 100:
+        return jsonify({"error": "limit must be an integer from 1 to 100"}), 400
     result = fetch_markets_for_state(state=state, limit=limit)
 
     if not result.get("ok"):
@@ -1135,11 +1800,10 @@ def get_news():
 @app.route("/api/alerts", methods=["GET"])
 def get_alerts():
     """Get farm alerts by coordinates."""
-    try:
-        lat = float(request.args.get("lat", ""))
-        lon = float(request.args.get("lon", ""))
-    except (TypeError, ValueError):
-        return jsonify({"error": "lat and lon required"}), 400
+    coordinates = _parse_coordinates(request.args.get("lat"), request.args.get("lon"))
+    if coordinates is None:
+        return jsonify({"error": "Valid latitude and longitude are required"}), 400
+    lat, lon = coordinates
 
     weather = get_weather_by_coords(lat, lon)
     forecast = get_forecast_by_coords(lat, lon)
@@ -1157,112 +1821,454 @@ def get_alerts():
         season=season,
     )
 
+    weather_available = bool(weather.get("ok"))
+    forecast_available = bool(forecast.get("ok"))
+    soil_available = bool(soil.get("ok"))
+    sources_available = {
+        "weather": weather_available,
+        "forecast": forecast_available,
+        "soil_estimate": soil_available,
+        "crop_season_rules": True,
+    }
+    if not (weather_available or forecast_available or soil_available):
+        data_quality = "unavailable"
+        data_quality_note = "Weather and soil providers were unavailable. An empty alert list is not an all-clear."
+    elif not (weather_available and forecast_available and soil_available):
+        data_quality = "partial"
+        data_quality_note = "Some weather or soil sources were unavailable. Review alerts with local conditions."
+    elif soil.get("data_quality") == "estimated":
+        data_quality = "estimated"
+        data_quality_note = "Weather feeds are available; soil values are model estimates, not a lab test."
+    else:
+        data_quality = "live"
+        data_quality_note = "Weather and soil providers returned data for this request."
+
     return jsonify({
         "alerts": alerts,
         "count": len(alerts),
-        "data_quality": "live",
+        "data_quality": data_quality,
+        "data_quality_note": data_quality_note,
+        "sources_available": sources_available,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
 
 # ============================================================
-# CHATBOT (GEMINI AI Integration — Full-Power Assistant)
+# CHATBOT (AGRIFY Safe Agricultural Assistant)
 # ============================================================
 @app.route("/api/chat", methods=["POST"])
 def chatbot():
-    """Full-power AI chatbot — works like ChatGPT/Gemini for farmers & general queries."""
-    data = request.get_json() or {}
-    message = data.get("message", "").strip()
+    """AGRIFY safe agricultural chatbot with Gemini AI and rule-based fallback."""
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "JSON object required"}), 400
+    message_value = data.get("message", "")
+    if not isinstance(message_value, str):
+        return jsonify({"error": "message must be text"}), 400
+    if len(message_value) > 4000:
+        return jsonify({"error": "message must be 4000 characters or fewer"}), 400
+    message = message_value.strip()
     lang = data.get("language", "en")
-    
-    if not message:
-        return jsonify({"reply": "Please type a question!", "language": "en", "timestamp": datetime.now(timezone.utc).isoformat()})
-    
+    if not isinstance(lang, str) or lang not in {"en", "te", "hi"}:
+        lang = "en"
+    has_image = bool(data.get("has_image", False))
+
+    if not message and not has_image:
+        return jsonify({
+            "reply": "Please type a question!",
+            "language": lang,
+            "source": "system",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
+    # Image-only path: no vision in this phase — redirect to Crop Doctor
+    if has_image and not message:
+        return jsonify({
+            "reply": (
+                "📷 **Image Analysis Not Available in Chat**\n\n"
+                "This chatbot cannot analyse crop images. "
+                "For accurate AI-powered disease detection from photos, please use the "
+                "**Crop Doctor** feature (available in the navigation menu).\n\n"
+                "Crop Doctor uses a dedicated plant disease model to identify possible "
+                "symptoms from leaf or plant images and suggest next steps."
+            ),
+            "language": lang,
+            "source": "system",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
     gemini_key = os.getenv("GEMINI_API_KEY")
-    
-    # 1. Attempt Gemini AI Response first if key exists AND library is present
+
+    # ── AGRIFY SAFE SYSTEM PROMPT ──────────────────────────────────
+    # This prompt enforces AGRIFY safety principles.
+    # Do NOT weaken, remove, or bypass these rules.
+    AGRIFY_SAFE_SYSTEM_PROMPT = (
+        "You are AGRIFY — a safe, responsible agricultural advisory assistant "
+        "for Indian farmers.\n\n"
+
+        "YOUR IDENTITY:\n"
+        "- You are a farming advisor, NOT a general-purpose chatbot.\n"
+        "- You specialise in crop management, soil health, irrigation, pest/disease "
+        "awareness, government schemes, and rural market intelligence.\n"
+        "- You are warm, respectful, and use simple language suitable for farmers.\n\n"
+
+        "SAFETY RULES — NEVER VIOLATE THESE:\n"
+        "1. FERTILIZER & PESTICIDE DOSAGES: Do NOT invent or fabricate specific "
+        "quantities (kg/acre, ml/litre, etc.) unless you are citing a well-known "
+        "general agronomy guideline. Always recommend confirming dosages with the "
+        "local KVK (Krishi Vigyan Kendra) or a licensed agronomist.\n"
+        "2. PESTICIDE BRANDS: Do NOT recommend specific pesticide brand names. "
+        "You may name the active ingredient (e.g. mancozeb, imidacloprid) but not "
+        "commercial brand products. Always advise consulting a licensed dealer.\n"
+        "3. DISEASE DIAGNOSIS: Do NOT confirm a specific disease from text alone. "
+        "Use phrases such as 'possible symptoms of', 'may indicate', "
+        "'cannot confirm without field inspection'. Direct users to Crop Doctor "
+        "for image-based assessment.\n"
+        "4. YIELD & PROFIT GUARANTEES: Do NOT guarantee any yield, profit, or "
+        "income figure. Use phrases such as 'typical range under good conditions' "
+        "or 'estimated — actual results vary'.\n"
+        "5. LIVE DATA (weather, soil, market): Do NOT fabricate current weather, "
+        "real-time soil readings, or live mandi prices. Direct users to the "
+        "AGRIFY Weather, Farm Analyzer, or Market Price features for live data.\n"
+        "6. IMAGE ANALYSIS: If the user mentions uploading or attaching an image, "
+        "state clearly that this chat cannot analyse images and direct them to "
+        "Crop Doctor.\n"
+        "7. GENERAL KNOWLEDGE: You may answer general agriculture and rural "
+        "livelihood questions helpfully. For non-agriculture topics, politely "
+        "redirect to agriculture.\n\n"
+
+        "DISCLAIMER: End responses that contain advisory information with a brief "
+        "note that farmers should verify critical decisions with their local "
+        "agriculture officer or KVK.\n\n"
+
+        "FORMAT: Use clear markdown formatting — bullet points for lists, bold "
+        "for key terms. Keep responses focused and practical."
+    )
+
+    # 1. Attempt Gemini AI Response
     if gemini_key and genai is not None:
         try:
             genai.configure(api_key=gemini_key)
             model = genai.GenerativeModel('gemini-2.5-flash')
-            
-            # Comprehensive system prompt
-            system_prompt = (
-                "You are AgriConnect AI — a world-class intelligent assistant built for Indian farmers, "
-                "agricultural professionals, and rural communities. You have deep expertise in agriculture, "
-                "farming, animal husbandry, horticulture, fisheries, government schemes, rural finance, "
-                "weather, soil science, crop management, pest control, and market intelligence.\n\n"
-                "RULES:\n"
-                "1. You are NOT limited to agriculture. Answer ANY question like ChatGPT or Gemini would.\n"
-                "2. For farming questions, give expert-level, detailed, actionable advice with specific "
-                "quantities, timings, product names, and scientific backing.\n"
-                "3. For general questions, answer accurately and helpfully.\n"
-                "4. Be warm, conversational, and respectful.\n"
-                "5. Use clear formatting with bullet points and bold for key terms.\n"
-                "6. Give comprehensive, detailed answers — not short 2-3 sentence replies.\n"
-                "7. For crop/fertilizer/pesticide questions, include specific dosages, brand names, timing, costs.\n"
-                "8. NEVER refuse to answer. You are a helpful, all-knowing assistant.\n"
-            )
-            
-            prompt = f"{system_prompt}\n\nUser's question: {message}"
-            
+            prompt = f"{AGRIFY_SAFE_SYSTEM_PROMPT}\n\nUser's question: {message}"
             response = model.generate_content(prompt)
-            reply_text = response.text.strip()
-            
+            reply_text = response.text.strip() if response.text else ""
+            if not reply_text:
+                raise ValueError("Empty Gemini response")
             return jsonify({
                 "reply": reply_text,
-                "language": "en",
+                "language": lang,
                 "source": "gemini_ai",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             })
         except Exception as e:
-            print(f"Gemini AI Error: {e}. Falling back to rules.")
+            print(f"[AGRIFY Chatbot] Gemini error: {e}. Falling back to rules.")
     elif gemini_key and genai is None:
-        print("Gemini API key set but google-generativeai package not installed. Using rules.")
+        print("[AGRIFY Chatbot] Gemini key set but library not installed. Using rules.")
 
-    # 2. Enhanced Rule-Based Fallback
+    # 2. Safe Rule-Based Fallback
+    # All responses must comply with AGRIFY safety principles.
     responses_en = {
-        "crop": "For personalized crop recommendations, use the Farm Analyzer with your GPS location. It uses live weather and real soil data from SoilGrids. Common Kharif crops: Rice, Cotton, Maize, Soybean. Rabi: Wheat, Mustard, Chickpea. Choose based on your soil type, water availability, and local market demand.",
-        "fertilizer": "Fertilizer advice depends on soil test results. General guidelines: Apply DAP (50 kg/acre) at sowing for phosphorus. Top-dress with Urea (30-40 kg/acre) at 25 and 50 days. For potassium deficiency, use MOP (25 kg/acre). Always get a soil test from your nearest KVK for precise recommendations.",
-        "irrigation": "Irrigate based on soil moisture and crop stage. Drip irrigation saves 40-50% water vs flood irrigation. Water in early morning (6-8 AM) for best absorption. Rice needs standing water during tillering. Cotton needs critical irrigation at flowering and boll formation stages.",
-        "disease": "Upload a leaf photo in Crop Doctor for AI diagnosis. Common diseases: Leaf Blight (treat with Mancozeb 2.5g/L), Powdery Mildew (Sulfur 3g/L), Bacterial Wilt (remove infected plants, apply Streptocycline). Always rotate crops to prevent soil-borne diseases.",
-        "weather": "Check the Weather section for a live 5-day forecast with farming advisories. Plan spraying on dry days with low wind. Avoid irrigation before expected rainfall. Protect crops during frost with smoke screens or straw mulching.",
-        "price": "Check Market Prices section for live mandi rates from Agmarknet. For better prices: sell at regulated mandis, check prices at 3-4 mandis before selling, consider grading and packaging, and explore FPO collective selling for bargaining power.",
-        "soil": "Soil data comes from SoilGrids (ISRIC) by GPS coordinates. For precise values, get a lab test from your district KVK. Key parameters: pH (6.0-7.5 ideal), Nitrogen (N), Phosphorus (P), Potassium (K), Organic Carbon (>0.5%), and electrical conductivity.",
-        "scheme": "Key government schemes: PM-KISAN (₹6000/year), PM Fasal Bima Yojana (crop insurance), KCC (Kisan Credit Card at 4% interest), Soil Health Card scheme, and PM Krishi Sinchai Yojana for irrigation. Apply through your local agriculture office or CSC center.",
-        "help": "I can help with: crop recommendations, fertilizer advice, irrigation scheduling, disease diagnosis, weather forecasts, market prices, government schemes, soil health, animal husbandry, and general knowledge. Ask me anything!",
-        "default": "I'm AgriConnect AI — your intelligent farming assistant. I can help with crops, fertilizers, diseases, weather, market prices, government schemes, and much more. What would you like to know?"
+        "image": (
+            "📷 **Image Analysis Not Available in Chat**\n\n"
+            "This chatbot cannot analyse crop images. "
+            "Please use the **Crop Doctor** feature in the navigation menu for "
+            "AI-powered plant disease detection from photos."
+        ),
+        "dosage": (
+            "⚠️ **Exact Dosage Not Available**\n\n"
+            "I cannot safely provide a specific fertilizer or pesticide dosage "
+            "without verified soil test data and a field assessment for your crop.\n\n"
+            "**Recommended steps:**\n"
+            "- Get a soil test from your nearest KVK (Krishi Vigyan Kendra)\n"
+            "- Use the AGRIFY **Farm Analyzer** with your GPS location for "
+            "personalised soil-based recommendations\n"
+            "- Consult a licensed agronomist or local agriculture officer\n\n"
+            "*AGRIFY does not invent dosages — incorrect application can damage "
+            "crops or soil health.*"
+        ),
+        "pesticide_brand": (
+            "⚠️ **Pesticide Brand Recommendation Not Available**\n\n"
+            "I cannot recommend specific pesticide brand names. "
+            "The correct product depends on your crop variety, local pest species, "
+            "and current resistance patterns.\n\n"
+            "**Please consult:**\n"
+            "- A licensed pesticide dealer in your district\n"
+            "- Your nearest KVK (Krishi Vigyan Kendra)\n"
+            "- State agriculture department extension officer\n\n"
+            "*Always follow the label directions and use PPE when applying any "
+            "pesticide.*"
+        ),
+        "disease": (
+            "🔍 **Possible Symptom — Field Confirmation Required**\n\n"
+            "Based on your description, the symptoms *may indicate* a fungal, "
+            "bacterial, or pest-related issue — but I cannot confirm a specific "
+            "disease from text alone.\n\n"
+            "**Recommended steps:**\n"
+            "- Use the **Crop Doctor** feature to upload a clear leaf photo for "
+            "AI-based analysis\n"
+            "- Consult your local KVK or agriculture extension officer for a "
+            "field diagnosis\n"
+            "- Until confirmed, avoid applying pesticides speculatively"
+        ),
+        "yield_guarantee": (
+            "📊 **Yield Estimates — Not a Guarantee**\n\n"
+            "Yield depends on many factors: soil health, variety, irrigation, "
+            "weather, and pest pressure. I cannot guarantee any specific yield "
+            "or profit figure.\n\n"
+            "Under good conditions, typical ranges for common crops in India:\n"
+            "- Rice: 20–35 qtl/acre (varies by variety and region)\n"
+            "- Wheat: 15–25 qtl/acre\n"
+            "- Cotton: 8–15 qtl/acre\n\n"
+            "Use the AGRIFY **Farm Analyzer** for a personalised crop suitability "
+            "assessment. *Actual results vary — consult your local agriculture officer.*"
+        ),
+        "live_market": (
+            "📈 **Live Market Prices**\n\n"
+            "I do not have access to real-time mandi prices in this chat. "
+            "Please check the **Market Prices** section in AGRIFY for live rates "
+            "sourced from Agmarknet (data.gov.in).\n\n"
+            "For better selling decisions:\n"
+            "- Compare prices at 2–3 nearby mandis before selling\n"
+            "- Check the MSP (Minimum Support Price) announced by the Government of India\n"
+            "- Consider FPO collective selling for better bargaining power"
+        ),
+        "live_soil": (
+            "🧪 **Real-Time Soil Data**\n\n"
+            "I cannot provide your current field soil readings — soil values "
+            "are specific to your location and require measurement.\n\n"
+            "**How to get your soil data:**\n"
+            "- Use the AGRIFY **Farm Analyzer** with GPS for satellite-based "
+            "SoilGrids data for your coordinates\n"
+            "- Get a lab soil test from your nearest KVK for precise N, P, K, pH values"
+        ),
+        "live_weather": (
+            "🌤️ **Live Weather Forecast**\n\n"
+            "For your GPS-specific 5-day weather forecast and farming advisories, "
+            "please use the **Weather** section in AGRIFY.\n\n"
+            "General tips:\n"
+            "- Plan spraying on dry days with wind below 15 km/h\n"
+            "- Avoid irrigation 24 hours before forecast rainfall\n"
+            "- Monitor for frost during Rabi season in northern regions"
+        ),
+        "crop": (
+            "🌱 **Crop Recommendations**\n\n"
+            "For personalised crop recommendations based on your actual soil and "
+            "GPS location, use the **Farm Analyzer** in AGRIFY.\n\n"
+            "General Kharif crops suited to South India: Rice, Cotton, Maize, "
+            "Soybean, Groundnut, Chilli.\n"
+            "General Rabi crops: Wheat, Mustard, Chickpea, Sunflower.\n\n"
+            "Choice depends on your soil type, water source, and local market. "
+            "*Consult your local KVK for variety-specific advice.*"
+        ),
+        "fertilizer_general": (
+            "🧪 **Fertilizer Guidance**\n\n"
+            "Fertilizer recommendations depend on your soil test results. "
+            "Without a soil test, I cannot provide safe dosage figures.\n\n"
+            "**General process:**\n"
+            "- Get a soil test from your nearest KVK or soil testing lab\n"
+            "- Use the AGRIFY **Farm Analyzer** for GPS-based soil data\n"
+            "- Apply based on the Soil Health Card recommendations\n\n"
+            "*Do not apply fertilizers speculatively — excess application "
+            "reduces soil health and wastes money.*"
+        ),
+        "irrigation": (
+            "💧 **Irrigation Guidance**\n\n"
+            "Irrigate based on soil moisture, crop stage, and weather forecast.\n\n"
+            "- Drip irrigation saves 40–50% water compared to flood irrigation\n"
+            "- Water in early morning (6–8 AM) for best absorption\n"
+            "- Rice needs standing water during tillering stage\n"
+            "- Cotton needs irrigation at flowering and boll formation stages\n\n"
+            "Check the **Weather** section for rainfall forecasts before scheduling irrigation."
+        ),
+        "scheme": (
+            "🏛️ **Government Schemes for Farmers**\n\n"
+            "Key schemes available:\n"
+            "- **PM-KISAN**: ₹6,000/year direct income support\n"
+            "- **PM Fasal Bima Yojana**: Crop insurance at subsidised premiums\n"
+            "- **KCC (Kisan Credit Card)**: Short-term credit at 4% interest\n"
+            "- **Soil Health Card Scheme**: Free soil testing and card\n"
+            "- **PM Krishi Sinchai Yojana**: Irrigation infrastructure support\n\n"
+            "Apply at your local agriculture office, Common Service Centre (CSC), "
+            "or through the PM-KISAN portal."
+        ),
+        "help": (
+            "🌾 **How I Can Help**\n\n"
+            "I can assist with:\n"
+            "- Crop selection and management guidance\n"
+            "- General soil health and irrigation advice\n"
+            "- Disease symptom awareness (use Crop Doctor for image diagnosis)\n"
+            "- Government schemes and rural finance\n"
+            "- Live weather: use the Weather tab\n"
+            "- Live prices: use the Market Prices tab\n"
+            "- GPS farm analysis: use the Farm Analyzer\n\n"
+            "*For exact dosages and disease confirmation, always consult your "
+            "local KVK or agriculture officer.*"
+        ),
+        "default": (
+            "🌾 **AGRIFY Agricultural Assistant**\n\n"
+            "I'm here to help with farming, soil health, irrigation, crop diseases, "
+            "government schemes, and agricultural guidance.\n\n"
+            "For live data, please use:\n"
+            "- 📍 **Farm Analyzer** — GPS-based soil & crop analysis\n"
+            "- 🌤️ **Weather** — live 5-day forecast\n"
+            "- 📊 **Market Prices** — live mandi rates\n"
+            "- 🔬 **Crop Doctor** — image-based plant disease detection\n\n"
+            "What would you like to know?"
+        ),
     }
 
-    msg_lower = message.lower()
-    reply = None
-    if any(w in msg_lower for w in ["crop", "పంట", "recommend", "grow", "sow", "plant", "cultivation"]):
-        reply = responses_en["crop"]
-    elif any(w in msg_lower for w in ["fertilizer", "ఎరువు", "npk", "urea", "nutrient", "manure", "dap"]):
-        reply = responses_en["fertilizer"]
-    elif any(w in msg_lower for w in ["water", "irrigation", "irrigate", "నీరు", "నీటిపారుదల", "drip"]):
-        reply = responses_en["irrigation"]
-    elif any(w in msg_lower for w in ["disease", "leaf", "blight", "pest", "వ్యాధి", "fungus", "insect", "worm"]):
+    msg_lower = message.lower() if message else ""
+
+    # Image mention in text → redirect to Crop Doctor
+    if has_image or any(w in msg_lower for w in ["image", "photo", "picture", "upload", "attached", "analyze it", "analyse it"]):
+        reply = responses_en["image"]
+    # Pesticide dosage / exact application rate
+    elif any(w in msg_lower for w in ["how much", "dosage", "dose", "per acre", "per litre", "per liter", "ml/l", "kg/acre", "grams", "quantity", "amount of fertilizer", "amount of pesticide"]):
+        reply = responses_en["dosage"]
+    # Pesticide brand
+    elif any(w in msg_lower for w in ["which pesticide", "which brand", "which product", "best pesticide", "pesticide brand", "buy pesticide", "which chemical"]):
+        reply = responses_en["pesticide_brand"]
+    # Disease confirmation request
+    elif any(w in msg_lower for w in ["disease", "blight", "leaf", "pest", "వ్యాధి", "fungus", "insect", "worm", "yellowing", "spots", "rot"]):
         reply = responses_en["disease"]
-    elif any(w in msg_lower for w in ["weather", "rain", "forecast", "వాతావరణం", "climate", "monsoon"]):
-        reply = responses_en["weather"]
-    elif any(w in msg_lower for w in ["price", "market", "mandi", "msp", "ధర", "sell", "rate"]):
-        reply = responses_en["price"]
-    elif any(w in msg_lower for w in ["soil", "నేల", "ph", "nitrogen", "testing", "organic"]):
-        reply = responses_en["soil"]
-    elif any(w in msg_lower for w in ["scheme", "yojana", "pm kisan", "government", "subsidy", "insurance", "loan"]):
+    # Yield/profit guarantees
+    elif any(w in msg_lower for w in ["guarantee", "assured", "definitely", "tonnes per acre", "ton per acre", "how much yield", "how much profit"]):
+        reply = responses_en["yield_guarantee"]
+    # Live market prices
+    elif any(w in msg_lower for w in ["price", "market", "mandi", "msp", "ధర", "sell", "rate", "today's price", "current price"]):
+        reply = responses_en["live_market"]
+    # Live soil data
+    elif any(w in msg_lower for w in ["my soil", "soil nitrogen", "soil right now", "soil ph", "soil today", "field soil", "నేల", "nitrogen level", "ph level"]):
+        reply = responses_en["live_soil"]
+    # Live weather
+    elif any(w in msg_lower for w in ["weather", "rain", "forecast", "వాతావరణం", "climate", "monsoon", "temperature today"]):
+        reply = responses_en["live_weather"]
+    # Crop recommendations
+    elif any(w in msg_lower for w in ["crop", "పంట", "recommend", "grow", "sow", "plant", "cultivation", "kharif", "rabi"]):
+        reply = responses_en["crop"]
+    # Fertilizer (general)
+    elif any(w in msg_lower for w in ["fertilizer", "fertiliser", "ఎరువు", "npk", "urea", "nutrient", "manure", "dap", "mop"]):
+        reply = responses_en["fertilizer_general"]
+    # Irrigation
+    elif any(w in msg_lower for w in ["water", "irrigation", "irrigate", "నీరు", "నీటిపారుదల", "drip", "sprinkler"]):
+        reply = responses_en["irrigation"]
+    # Schemes
+    elif any(w in msg_lower for w in ["scheme", "yojana", "pm kisan", "government", "subsidy", "insurance", "loan", "kcc"]):
         reply = responses_en["scheme"]
-    elif any(w in msg_lower for w in ["help", "సహాయం", "what can", "how can"]):
+    # Help
+    elif any(w in msg_lower for w in ["help", "సహాయం", "what can", "how can", "what do you"]):
         reply = responses_en["help"]
     else:
         reply = responses_en["default"]
 
     return jsonify({
         "reply": reply,
-        "language": "en",
+        "language": lang,
         "source": "rule_fallback",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
+
+
+# ============================================================
+# AGRIFY AI FARM ACTION PLAN (Isolated Extension)
+# ============================================================
+@app.route("/api/farm/action-plan", methods=["POST"])
+def farm_action_plan():
+    """
+    Generate a prioritized 7-day action plan from existing farm analysis output.
+    Purely consumes existing analysis results without altering any calculations.
+    """
+    data = request.get_json(silent=True)
+    if data is None or not isinstance(data, dict):
+        return jsonify({"error": "JSON body required"}), 400
+
+    target_farm = None
+    if is_db_available() and data.get("farm_uid"):
+        target_uid = str(data.get("farm_uid")).strip()
+        target_farm = FarmProfile.query.filter_by(farm_uid=target_uid).first()
+        if not target_farm:
+            return jsonify({"error": f"Farm profile '{target_uid}' not found"}), 404
+
+        auth_token = extract_bearer_or_header_token(request) or data.get("owner_token")
+        if not auth_token or not verify_owner_token(auth_token, target_farm.owner_token_hash):
+            return jsonify({"error": "Forbidden: invalid owner token for this farm"}), 403
+
+    try:
+        from action_plan import generate_action_plan
+        plan = generate_action_plan(data)
+
+        if target_farm:
+            try:
+                import json
+                crop_rec_id = data.get("crop_recommendation_id")
+                plan_row = FarmActionPlan(
+                    farm_id=target_farm.id,
+                    crop_recommendation_id=int(crop_rec_id) if crop_rec_id is not None else None,
+                    crop_name=plan.get("crop", "Unknown"),
+                    season=plan.get("season", "Kharif"),
+                    location_str=plan.get("location", ""),
+                    summary=plan.get("summary", ""),
+                    immediate_actions_json=json.dumps(plan.get("immediate_actions", [])),
+                    this_week_plan_json=json.dumps(plan.get("this_week_plan", [])),
+                    disclaimer=plan.get("disclaimer", ""),
+                    data_quality=plan.get("data_quality", "live"),
+                )
+                db.session.add(plan_row)
+                db.session.commit()
+                plan["persistence"] = {
+                    "persisted": True,
+                    "farm_uid": target_farm.farm_uid,
+                    "action_plan_id": plan_row.id,
+                }
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Transaction rollback during action plan persistence: {e}")
+                return jsonify({"error": "Failed to persist action plan due to database transaction error"}), 500
+        else:
+            plan["persistence"] = {"persisted": False}
+
+        return jsonify(plan)
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        print(f"Error generating action plan: {e}")
+        return jsonify({"error": "Failed to generate action plan"}), 500
+
+
+# ============================================================
+# AGRIFY AI VOICE ASSISTANT (Isolated Orchestration Extension)
+# ============================================================
+@app.route("/api/assistant/query", methods=["POST"])
+def assistant_query():
+    """
+    Orchestrates voice AI queries, deterministic intent classification,
+    fact-anchored context filtering, and safe response generation.
+    """
+    data = request.get_json(silent=True)
+    if data is None or not isinstance(data, dict):
+        # Gracefully handle malformed or non-dict JSON body
+        data = {}
+
+    query = data.get("query", "")
+    if not isinstance(query, str):
+        return jsonify({"error": "query must be text"}), 400
+    if len(query) > 4000:
+        return jsonify({"error": "query must be 4000 characters or fewer"}), 400
+    if "context" in data and not isinstance(data["context"], dict):
+        return jsonify({"error": "context must be an object"}), 400
+    data["query"] = query
+
+    try:
+        from voice_assistant import query_voice_assistant
+        result = query_voice_assistant(data)
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        print(f"Error in voice assistant query: {e}")
+        return jsonify({"error": "Failed to process voice query"}), 500
 
 
 # ============================================================
@@ -1282,6 +2288,8 @@ def home():
             "GET  /api/geocode/reverse?lat=&lon=": "Reverse geocode coordinates → location",
             "GET  /api/soil/coords?lat=&lon=": "Real soil data from SoilGrids",
             "POST /api/farm/analyze": "FULL farm analysis (GPS + all modules)",
+            "POST /api/farm/action-plan": "Prioritized 7-day action plan from farm analysis",
+            "POST /api/assistant/query": "AI Voice Assistant orchestration endpoint",
             "POST /api/predict/crop": "ML crop prediction [legacy]",
             "POST /api/predict/fertilizer": "ML fertilizer prediction [legacy]",
             "POST /api/soil-analysis": "Soil chemical effects analysis",
@@ -1314,4 +2322,8 @@ if __name__ == "__main__":
     print("  GET  http://127.0.0.1:5000/api/soil/coords?lat=17.38&lon=78.46")
     print("  POST http://127.0.0.1:5000/api/farm/analyze")
     print("=" * 70 + "\n")
-    app.run(debug=True, port=5000)
+    debug_enabled = (
+        os.getenv("FLASK_DEBUG", "false").strip().lower() == "true"
+        and os.getenv("FLASK_ENV", "").strip().lower() == "development"
+    )
+    app.run(debug=debug_enabled, port=5000)

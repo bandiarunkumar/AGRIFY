@@ -5,6 +5,8 @@
 let lang = 'en';
 const listeners = [];
 
+if (typeof document !== 'undefined') document.documentElement.lang = lang;
+
 const strings = {
   en: {
     // Navbar
@@ -317,8 +319,9 @@ export function t(key) {
 }
 
 export function setLang(l) {
-  lang = l;
-  listeners.forEach(fn => fn(l));
+  lang = l === 'te' ? 'te' : 'en';
+  if (typeof document !== 'undefined') document.documentElement.lang = lang;
+  listeners.forEach(fn => fn(lang));
 }
 
 export function getLang() { return lang; }
@@ -326,7 +329,8 @@ export function getLang() { return lang; }
 export function onLangChange(fn) {
   listeners.push(fn);
   window.addEventListener('langChange', (e) => {
-    lang = e.detail;
+    lang = e.detail === 'te' ? 'te' : 'en';
+    document.documentElement.lang = lang;
     fn(lang);
   });
 }

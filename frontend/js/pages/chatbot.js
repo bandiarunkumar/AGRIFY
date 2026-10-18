@@ -88,7 +88,7 @@ export function renderChatbot() {
           </div>
           <div>
             <div class="chatbot-header-name">AGRIFY</div>
-            <div class="chatbot-header-status"><span class="status-pulse"></span> Powered by Gemini · Always Online</div>
+          <div class="chatbot-header-status"><span class="status-pulse"></span> ${currentLang==='te'?'రైతు సహాయకుడు · తెలుగు & ఇంగ్లీష్':'Farmer assistant · English & Telugu'}</div>
           </div>
         </div>
         <div class="chatbot-header-right">
@@ -99,7 +99,7 @@ export function renderChatbot() {
       </div>
 
       <!-- Messages -->
-      <div class="chatbot-messages-area" id="chat-messages">
+      <div class="chatbot-messages-area" id="chat-messages" role="log" aria-live="polite" aria-label="Chat conversation">
         <div class="chat-welcome-card">
           <div class="welcome-glow"></div>
           <div class="welcome-icon">🌾</div>
@@ -136,7 +136,7 @@ export function renderChatbot() {
           <button class="chat-tool-btn" id="chat-camera-btn" title="Take photo">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </button>
-          <textarea id="chat-input" class="chatbot-textarea" placeholder="${currentLang==='te'?'మీ ప్రశ్న అడగండి...':'Ask me anything...'}" rows="1"></textarea>
+          <textarea id="chat-input" class="chatbot-textarea" aria-label="${currentLang==='te'?'మీ ప్రశ్న అడగండి':'Ask your farming question'}" placeholder="${currentLang==='te'?'మీ ప్రశ్న అడగండి...':'Ask me anything...'}" rows="1"></textarea>
           <button class="chat-tool-btn voice-btn" id="chat-voice-btn" title="Voice input">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
@@ -298,17 +298,15 @@ async function handleSend() {
   const imageHtml = hasImage ? `<div class="chat-image-preview"><img src="${pendingImage.dataUrl}" alt="uploaded" /></div>` : '';
   appendMessage('user', displayMsg, imageHtml);
 
-  // Build the text to send (describe the image context)
-  let textToSend = msg || '';
-  if (hasImage) {
-    textToSend = (msg ? msg + '\n\n' : '') + '[User has attached an image of a crop/plant leaf. Please analyze it and provide diagnosis, treatment recommendations, and farming advice based on the visual description.]';
-  }
+  // Build text payload — do NOT inject fake image analysis instructions.
+  // Signal image presence via has_image flag; backend redirects to Crop Doctor.
+  const textToSend = msg || '';
 
   clearPreview();
   const typingId = appendTyping();
 
   try {
-    const result = await sendChatMessage(textToSend, currentLang);
+    const result = await sendChatMessage(textToSend, currentLang, hasImage);
     removeTyping(typingId);
     let responseText = result.reply || 'Sorry, I could not process that. Please try again.';
     if (currentLang !== 'en') {
