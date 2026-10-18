@@ -1,6 +1,7 @@
 """Regression tests ensuring malformed inputs fail before provider I/O."""
 
 import unittest
+import os
 from unittest.mock import patch
 
 import api
@@ -102,6 +103,92 @@ class TestCoordinateValidation(unittest.TestCase):
         self.assertEqual(data["alerts"], [])
         self.assertEqual(data["data_quality"], "unavailable")
         self.assertIn("not an all-clear", data["data_quality_note"])
+
+    def test_oversized_payload_rejected_with_413(self):
+        # 2.5 MB dummy body exceeding the 2 MB limit
+        large_body = "x" * (2500 * 1024)
+        response = self.client.post(
+            "/api/predict/crop",
+            data=large_body,
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 413)
+        data = response.get_json()
+        self.assertIn("exceeds the maximum permitted limit", data["error"])
+
+
+class TestRateLimiting(unittest.TestCase):
+    """Regression tests for the API rate-limiting layer."""
+
+    def setUp(self):
+        self.client = api.app.test_client()
+        # Start every test with a clean in-memory quota store so tests
+        # are hermetic (the limiter is bound to the shared api.app).
+        try:
+            api.limiter.storage.reset()
+        except Exception:
+            pass
+
+    def test_health_check_exempt_from_rate_limit(self):
+        # /api/health is @limiter.exempt: rapid traffic must not be throttled.
+        for _ in range(150):
+            response = self.client.get("/api/health")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()["status"], "healthy")
+
+    def test_rate_limited_handler_returns_consistent_json_429(self):
+        with api.app.app_context():
+            result = api.rate_limited(None)
+        # Flask error handlers return (response, status_code) when invoked directly.
+        self.assertEqual(result[1], 429)
+        data = result[0].get_json()
+        self.assertEqual(data["code"], 429)
+        self.assertIn("Too many requests", data["error"])
+
+    def test_rate_limit_key_ignores_spoofed_forwarded_for(self):
+        # Quota key must derive from the TCP peer address, never from
+        # client-supplied X-Forwarded-For (spoofable bypass vector).
+        with api.app.test_request_context(
+            "/api/health", headers={"X-Forwarded-For": "1.2.3.4"}
+        ):
+            key = api._rate_limit_key()
+            # The spoofed header must NOT influence the quota key.
+            self.assertNotEqual(key, "1.2.3.4")
+
+    def test_env_limit_reads_configuration(self):
+        self.assertEqual(
+            api._env_limit("RATELIMIT_DEFAULT", "120 per minute"),
+            "120 per minute",
+        )
+        with patch.dict(os.environ, {"RATELIMIT_ASSISTANT": "10 per minute"}):
+            self.assertEqual(
+                api._env_limit("RATELIMIT_ASSISTANT", "30 per minute"),
+                "10 per minute",
+            )
+
+    def test_assistant_query_not_rate_limited_under_normal_load(self):
+        for _ in range(5):
+            response = self.client.post(
+                "/api/assistant/query",
+                json={"query": "hello", "language": "en"},
+            )
+            self.assertNotEqual(response.status_code, 429)
+
+    def test_assistant_query_exceeding_limit_returns_429(self):
+        # Assistant route is limited to 30/minute; the 31st request is 429.
+        seen_429 = False
+        for _ in range(32):
+            response = self.client.post(
+                "/api/assistant/query",
+                json={"query": "hello", "language": "en"},
+            )
+            if response.status_code == 429:
+                seen_429 = True
+                data = response.get_json()
+                self.assertEqual(data["code"], 429)
+                self.assertIn("Too many requests", data["error"])
+                break
+        self.assertTrue(seen_429, "Expected a 429 after exceeding the limit")
 
 
 if __name__ == "__main__":

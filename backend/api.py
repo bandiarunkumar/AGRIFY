@@ -13,6 +13,8 @@ import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
+from werkzeug.exceptions import RequestEntityTooLarge
+from flask_limiter import Limiter
 
 load_dotenv()
 
@@ -360,6 +362,70 @@ def get_allowed_origins():
 CORS(app, origins=get_allowed_origins())
 
 
+# ============================================================
+# RATE LIMITING (AGRIFY production hardening)
+# ============================================================
+# Security notes:
+#   - The quota key is derived solely from the TCP peer address
+#     (request.remote_addr). Client-supplied headers such as
+#     X-Forwarded-For / X-Real-IP are intentionally NOT trusted,
+#     because a malicious caller could spoof them to bypass or
+#     shift quotas. The trade-off is that behind a reverse proxy
+#     all clients may share one counter; for multi-worker or
+#     multi-instance production deployments set RATELIMIT_STORAGE_URI
+#     to a shared store (e.g. Redis) and configure trusted proxies.
+#   - Default backend is in-memory and is process-local. It is safe
+#     for single-worker Render free-tier deployments. Documented
+#     limitation: not shared across workers/instances unless a
+#     shared storage URI is configured.
+# ============================================================
+
+
+def _rate_limit_key() -> str:
+    """Return a quota key based only on the trusted TCP peer address.
+
+    Deliberately ignores client-supplied headers (X-Forwarded-For,
+    X-Real-IP) so they cannot be used to evade or shift rate limits.
+    """
+    remote = request.remote_addr
+    return remote if remote else "unknown"
+
+
+def _env_limit(name: str, default: str) -> str:
+    """Read a rate-limit string from the environment, falling back to default."""
+    return os.getenv(name, default).strip() or default
+
+
+RATELIMIT_ENABLE = os.getenv("RATELIMIT_ENABLE", "true").strip().lower() not in ("0", "false", "no", "off")
+RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "").strip() or None
+
+limiter = Limiter(
+    app=app,
+    key_func=_rate_limit_key,
+    default_limits=[_env_limit("RATELIMIT_DEFAULT", "120 per minute")] if RATELIMIT_ENABLE else [],
+    storage_uri=RATELIMIT_STORAGE_URI,
+    # Swallow misconfiguration so the API stays available; limits are a
+    # defense-in-depth layer, not an availability dependency.
+    retry_after=None,
+)
+
+if RATELIMIT_STORAGE_URI:
+    app.logger.info("Rate limiting enabled with shared storage: %s", RATELIMIT_STORAGE_URI)
+elif RATELIMIT_ENABLE:
+    app.logger.info("Rate limiting enabled (in-memory, process-local counter).")
+else:
+    app.logger.info("Rate limiting disabled via RATELIMIT_ENABLE=false.")
+
+
+@app.errorhandler(429)
+def rate_limited(_error):
+    """Consistent JSON response for rate-limited requests."""
+    return jsonify({
+        "error": "Too many requests. Please slow down and try again later.",
+        "code": 429,
+    }), 429
+
+
 def _parse_coordinates(lat_value, lon_value):
     """Parse finite WGS84 coordinates, rejecting invalid values before I/O."""
     try:
@@ -396,6 +462,15 @@ def is_db_available():
     return bool(database_config.get_database_uri())
 
 # Configure and bind database extension at application initialization
+MAX_CONTENT_LENGTH = 2 * 1024 * 1024  # 2 MB limit for API request payloads
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+
+
+@app.errorhandler(413)
+def request_entity_too_large(_error):
+    return jsonify({"error": "Request payload exceeds the maximum permitted limit of 2 MB"}), 413
+
+
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI or "sqlite:///:memory:"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = database_config.get_sqlalchemy_engine_options(app.config['SQLALCHEMY_DATABASE_URI'])
@@ -414,6 +489,7 @@ if DATABASE_URI:
 # HEALTH CHECK
 # ============================================================
 @app.route("/api/health", methods=["GET"])
+@limiter.exempt
 def health():
     return jsonify({
         "status": "healthy",
@@ -840,6 +916,7 @@ def delete_farm_profile(farm_uid):
 # FULL FARM ANALYSIS (Coordinates-first)
 # ============================================================
 @app.route("/api/farm/analyze", methods=["POST"])
+@limiter.limit(_env_limit("RATELIMIT_ANALYZE", "30 per minute"))
 
 
 def farm_analyze():
@@ -1433,6 +1510,7 @@ def _evaluate_agronomic_crops(N, P, K, temperature, humidity, ph, rainfall, regi
 
 
 @app.route("/api/predict/crop", methods=["POST"])
+@limiter.limit(_env_limit("RATELIMIT_PREDICT", "60 per minute"))
 def crop_prediction():
     """
     Crop prediction endpoint (backward-compatible legacy route).
@@ -1498,6 +1576,9 @@ def crop_prediction():
 
     except (TypeError, ValueError) as e:
         return jsonify({"error": f"Invalid number: {str(e)}"}), 400
+    except RequestEntityTooLarge:
+        # Let Flask's registered 413 handler return the JSON payload-limit response
+        raise
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
@@ -1506,6 +1587,7 @@ def crop_prediction():
 # FERTILIZER PREDICTION (Legacy endpoint — strict safety guardrail)
 # ============================================================
 @app.route("/api/predict/fertilizer", methods=["POST"])
+@limiter.limit(_env_limit("RATELIMIT_PREDICT", "30 per minute"))
 def fertilizer_prediction():
     """
     Fertilizer prediction endpoint (legacy route).
@@ -1675,6 +1757,7 @@ def get_soil_data_legacy():
 # MARKET PRICES (Real-time from Agmarknet via data.gov.in)
 # ============================================================
 @app.route("/api/market-prices", methods=["POST"])
+@limiter.limit(_env_limit("RATELIMIT_MARKET", "60 per minute"))
 def market_prices():
     """Fetch real-time mandi prices from Agmarknet (data.gov.in)."""
     try:
@@ -1857,6 +1940,7 @@ def get_alerts():
 # CHATBOT (AGRIFY Safe Agricultural Assistant)
 # ============================================================
 @app.route("/api/chat", methods=["POST"])
+@limiter.limit(_env_limit("RATELIMIT_CHAT", "30 per minute"))
 def chatbot():
     """AGRIFY safe agricultural chatbot with Gemini AI and rule-based fallback."""
     data = request.get_json(silent=True) or {}
@@ -2241,6 +2325,7 @@ def farm_action_plan():
 # AGRIFY AI VOICE ASSISTANT (Isolated Orchestration Extension)
 # ============================================================
 @app.route("/api/assistant/query", methods=["POST"])
+@limiter.limit(_env_limit("RATELIMIT_ASSISTANT", "30 per minute"))
 def assistant_query():
     """
     Orchestrates voice AI queries, deterministic intent classification,

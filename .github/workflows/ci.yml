@@ -1,0 +1,133 @@
+# AGRIFY CI quality gate.
+#
+# Runs on:
+#   - push to the staging branch
+#   - pull requests targeting main or staging
+#
+# No production credentials, secrets, or external services are used. Tests run
+# against safe local/test configuration (in-memory SQLite; no live AI keys).
+
+name: CI
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [main, staging]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------
+  # Backend: install reproducibly, run unit/integration test suite.
+  # ------------------------------------------------------------------
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile-check backend Python files
+        working-directory: backend
+        run: python -m py_compile api.py auth.py config.py database_config.py voice_assistant.py agent/*.py etl/*.py alerts/*.py models/*.py predictions.py
+
+      - name: Run backend test suite
+        working-directory: backend
+        run: python -m unittest discover -v
+        env:
+          # Safe, local-only test configuration. No live credentials.
+          DATABASE_URL: "sqlite:///:memory:"
+          FLASK_ENV: "testing"
+          RATELIMIT_ENABLE: "false"
+          GEMINI_API_KEY: ""
+          OPENAI_API_KEY: ""
+          OPENWEATHERMAP_API_KEY: ""
+          NEWSAPI_KEY: ""
+
+  # ------------------------------------------------------------------
+  # Crop Doctor image microservice: install deps, run tests.
+  # ------------------------------------------------------------------
+  image_detection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install image_detection dependencies
+        working-directory: image_detection
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile-check image_detection Python files
+        working-directory: image_detection
+        run: python -m py_compile app.py upload_validation.py
+
+      - name: Run image_detection test suite
+        working-directory: image_detection
+        run: python -m unittest discover -v
+        env:
+          FLASK_ENV: "testing"
+          IMAGE_RATELIMIT_ENABLE: "false"
+
+  # ------------------------------------------------------------------
+  # Frontend: install from committed lockfile, run production build.
+  # ------------------------------------------------------------------
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend production build
+        working-directory: frontend
+        run: npm run build
+
+  # ------------------------------------------------------------------
+  # Repository hygiene: whitespace and text-file checks.
+  # ------------------------------------------------------------------
+  hygiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for whitespace errors and non-UTF8 text files
+        run: |
+          git diff --check || true
+          find . -path ./.git -prune -o -type f -print0 | xargs -0 file --mime-encoding | grep -v "us-ascii\|utf-8" || true

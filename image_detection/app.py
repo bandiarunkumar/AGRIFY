@@ -5,6 +5,7 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import gc
 from upload_validation import validate_image_upload, unique_upload_path
+from flask_limiter import Limiter
 
 # Memory optimizations for Render Free Tier (512MB RAM)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Reduce tf logging
@@ -60,6 +61,59 @@ def get_allowed_origins():
 
 
 CORS(app, origins=get_allowed_origins())
+
+# Crop Doctor rate limiting (image inference is expensive).
+# Quota key is the trusted TCP peer address only; client-supplied
+# headers are intentionally not trusted to prevent quota bypass.
+# Default in-memory counter is process-local; for multi-worker
+# production set IMAGE_RATELIMIT_STORAGE_URI to a shared store.
+
+
+def _image_rate_limit_key() -> str:
+    remote = request.remote_addr
+    return remote if remote else "unknown"
+
+
+_IMAGE_RATELIMIT_ENABLE = (
+    os.getenv("IMAGE_RATELIMIT_ENABLE", "true").strip().lower()
+    not in ("0", "false", "no", "off")
+)
+_IMAGE_RATELIMIT_STORAGE_URI = (
+    os.getenv("IMAGE_RATELIMIT_STORAGE_URI", "").strip() or None
+)
+
+image_limiter = Limiter(
+    app=app,
+    key_func=_image_rate_limit_key,
+    default_limits=[os.getenv("IMAGE_RATELIMIT_DEFAULT", "60 per minute")]
+    if _IMAGE_RATELIMIT_ENABLE
+    else [],
+    storage_uri=_IMAGE_RATELIMIT_STORAGE_URI,
+    retry_after=None,
+)
+
+if _IMAGE_RATELIMIT_STORAGE_URI:
+    app.logger.info(
+        "Image rate limiting enabled with shared storage: %s",
+        _IMAGE_RATELIMIT_STORAGE_URI,
+    )
+elif _IMAGE_RATELIMIT_ENABLE:
+    app.logger.info(
+        "Image rate limiting enabled (in-memory, process-local counter)."
+    )
+else:
+    app.logger.info("Image rate limiting disabled via IMAGE_RATELIMIT_ENABLE=false.")
+
+
+@app.errorhandler(429)
+def image_rate_limited(_error):
+    return jsonify({
+        "status": "error",
+        "error": "Too many image requests. Please slow down and try again later.",
+        "code": 429,
+    }), 429
+
+
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 app.config['MAX_CONTENT_LENGTH'] = MAX_IMAGE_BYTES
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -199,6 +253,7 @@ def home():
     return render_template('index.html')
 
 @app.route('/api/predict', methods=['POST'])
+@image_limiter.limit(os.getenv("IMAGE_RATELIMIT_PREDICT", "30 per minute"))
 def predict_disease():
     file = request.files.get('file')
     lang = request.form.get('language', 'en')
