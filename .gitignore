@@ -1,5 +1,6 @@
 node_modules/
 venv/
+.venv/
 new_venv/
 myenv/
 .env
@@ -10,3 +11,8 @@ __pycache__/
 .DS_Store
 dist/
 .dist/
+*.db
+*.sqlite
+*.sqlite3
+*.zip
+verification_results.json

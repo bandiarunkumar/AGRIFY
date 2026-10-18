@@ -43,7 +43,7 @@ services:
       # --- Set via Render Dashboard for staging frontend domain ---
       # ALLOWED_ORIGINS     (e.g. https://<your-staging-subdomain>.vercel.app)
       # FRONTEND_URL        (e.g. https://<your-staging-subdomain>.vercel.app)
-      # CROP_DOCTOR_SERVICE_URL (https://agri-connect-image-staging.onrender.com)
+      # Note: Frontend communicates directly with Crop Doctor via VITE_IMAGE_API_BASE_URL
       # GEMINI_API_KEY      (optional, for live AI Agent tests)
       # OPENAI_API_KEY      (optional, fallback AI)
       # OPENWEATHERMAP_API_KEY (optional, live weather ETL)
