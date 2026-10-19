@@ -5,5 +5,5 @@ limits==5.8.0
 tensorflow
 numpy
 Werkzeug==3.0.3
-setuptools>=70.0.0
+setuptools>=70.0.0,<80.0.0
 gunicorn>=22.0.0
