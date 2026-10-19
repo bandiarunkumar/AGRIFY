@@ -1,34 +1,72 @@
 // ============================================================
-// Agri-Connect — Production API Client
-// GPS-first coordinate-based calls to production Flask backend
+// Agri-Connect — Environment-Safe API Client
+// API base URLs must be provided via VITE_API_BASE_URL and
+// VITE_IMAGE_API_BASE_URL environment variables.
+// Staging must never silently fall back to production URLs.
+// Missing or empty configuration throws a clear, actionable error.
 // ============================================================
 
-const API_BASE = 'https://agri-connect-main-app.onrender.com';
-const DISEASE_API_BASE = 'https://agri-connect-image.onrender.com';
-
-export function getApiBase() {
-  if (typeof window !== 'undefined' && window.__AGRIFY_API_BASE__) {
-    return window.__AGRIFY_API_BASE__;
+// Returns true in Vite dev mode and in Node/unknown environments (tests).
+// Vite statically replaces import.meta.env.DEV with true/false at build time,
+// so this evaluates to false in production builds.
+function _isDev() {
+  try {
+    const env = import.meta?.env;
+    if (env === undefined) {
+      return true; // Node/unknown environment (tests, etc.)
+    }
+    return env.DEV === true;
+  } catch {
+    return true;
   }
-  if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+}
+
+// Testing hook: overrides env resolution for test scenarios only.
+// No-op in production builds (import.meta.env.DEV === false).
+let _testEnv = null;
+
+export function _setEnvForTesting(env) {
+  if (_isDev()) {
+    _testEnv = env;
+  }
+}
+
+function _readEnv(name) {
+  if (_testEnv && Object.prototype.hasOwnProperty.call(_testEnv, name)) {
+    const value = _testEnv[name];
+    return value == null || String(value).trim() === '' ? undefined : String(value).trim();
+  }
+  try {
+    const value = import.meta?.env?.[name];
+    return value == null || String(value).trim() === '' ? undefined : String(value).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function _requireEnv(name, fallbackLocal) {
+  const configured = _readEnv(name);
+  if (configured) {
+    return configured.replace(/\/$/, '');
   }
   const isLocal = typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  // Use explicit 127.0.0.1 (not 'localhost') to bypass macOS AirPlay Receiver which binds to *:5000
-  return isLocal ? 'http://127.0.0.1:5000' : API_BASE;
+  if (isLocal) {
+    return fallbackLocal;
+  }
+  throw new Error(
+    `Missing required environment variable ${name}. ` +
+    'Set it in .env (local development) or Vercel project settings (staging/production). ' +
+    'Staging must not silently fall back to production URLs.'
+  );
+}
+
+export function getApiBase() {
+  return _requireEnv('VITE_API_BASE_URL', 'http://127.0.0.1:5000');
 }
 
 export function getDiseaseApiBase() {
-  if (typeof window !== 'undefined' && window.__AGRIFY_DISEASE_API_BASE__) {
-    return window.__AGRIFY_DISEASE_API_BASE__;
-  }
-  if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_IMAGE_API_BASE_URL) {
-    return import.meta.env.VITE_IMAGE_API_BASE_URL;
-  }
-  const isLocal = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  return isLocal ? 'http://127.0.0.1:5001' : DISEASE_API_BASE;
+  return _requireEnv('VITE_IMAGE_API_BASE_URL', 'http://127.0.0.1:5001');
 }
 
 // Retry-aware fetch with timeout
