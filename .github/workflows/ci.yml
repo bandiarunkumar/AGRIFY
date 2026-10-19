@@ -129,5 +129,22 @@ jobs:
 
       - name: Check for whitespace errors and non-UTF8 text files
         run: |
-          git diff --check || true
-          find . -path ./.git -prune -o -type f -print0 | xargs -0 file --mime-encoding | grep -v "us-ascii\|utf-8" || true
+          git diff --check
+          # Exclude git metadata and local/generated directories; binary
+          # files (images, archives) are not text and are ignored. A
+          # non-empty result means a tracked text file is not UTF-8.
+          non_utf8=$(find . \
+            -path ./.git -prune -o \
+            -path ./backend/.venv -prune -o \
+            -path ./image_detection/.venv -prune -o \
+            -path ./frontend/node_modules -prune -o \
+            -path ./frontend/dist -prune -o \
+            -path ./.vercel -prune -o \
+            -type f -print0 \
+            | xargs -0 file --mime-encoding 2>/dev/null \
+            | grep -vE "us-ascii|utf-8|binary" || true)
+          if [ -n "$non_utf8" ]; then
+            echo "Non-UTF-8 text files found:"
+            echo "$non_utf8"
+            exit 1
+          fi
