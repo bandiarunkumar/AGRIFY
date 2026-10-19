@@ -5,6 +5,7 @@ import os
 from unittest.mock import patch
 
 import api
+import etl.weather_etl as etl_weather_etl
 
 
 class TestCoordinateValidation(unittest.TestCase):
@@ -189,6 +190,166 @@ class TestRateLimiting(unittest.TestCase):
                 self.assertIn("Too many requests", data["error"])
                 break
         self.assertTrue(seen_429, "Expected a 429 after exceeding the limit")
+
+
+class TestWeatherKeyMissingRegression(unittest.TestCase):
+    """Regression tests: missing OPENWEATHERMAP_API_KEY must never fabricate weather."""
+
+    def setUp(self):
+        self.client = api.app.test_client()
+
+    def test_weather_by_coords_missing_key_returns_error_not_fake_data(self):
+        # Patch OWM_KEY to empty (simulates key absent from env).
+        with patch.object(etl_weather_etl, "OWM_KEY", ""):
+            result = etl_weather_etl.get_weather_by_coords(17.4, 78.5)
+        self.assertNotEqual(result.get("ok"), True)
+        self.assertIn("OPENWEATHERMAP_API_KEY not configured", result.get("error", ""))
+        # No temperature, humidity, or other fabricated fields present
+        self.assertNotIn("temperature", result)
+        self.assertNotIn("humidity", result)
+
+    def test_weather_by_city_missing_key_returns_error(self):
+        with patch.object(etl_weather_etl, "OWM_KEY", ""):
+            result = etl_weather_etl.get_weather_by_city("Hyderabad")
+        self.assertNotEqual(result.get("ok"), True)
+        self.assertIn("OPENWEATHERMAP_API_KEY not configured", result.get("error", ""))
+
+    def test_weather_endpoint_missing_key_returns_error_response(self):
+        # Patch api.get_weather_by_coords (bound at api.py import time).
+        # Endpoint returns 400 when weather result contains "error".
+        with patch.object(api, "get_weather_by_coords", return_value={"error": "OPENWEATHERMAP_API_KEY not configured in .env"}):
+            response = self.client.get("/api/weather/coords?lat=17.4&lon=78.5")
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertNotEqual(data.get("ok"), True)
+        self.assertIn("OPENWEATHERMAP_API_KEY not configured", data.get("error", ""))
+
+
+class TestSoilInputsZeroDeficiencyRegression(unittest.TestCase):
+    """Regression tests: soil N=0 and K=1 trigger deficiency flags, not defaults."""
+
+    def setUp(self):
+        self.client = api.app.test_client()
+        self.base_payload = {
+            "latitude": 17.4,
+            "longitude": 78.5,
+            "area_acres": 2.0,
+            "season": "Kharif",
+            "region": "Telangana",
+            "soil_type": "Loamy",
+            "soil_ph": 6.5,
+            "soil_moisture": 40,
+            "organic_carbon": 0.8,
+            "irrigation": "Canal",
+            "previous_crop": "Wheat",
+            "previous_fertilizer": "Moderate",
+            "yield_last": 3000.0,
+        }
+
+    def test_nitrogen_zero_triggers_deficiency_flag(self):
+        payload = dict(self.base_payload)
+        payload["N"] = 0
+        payload["P"] = 40
+        payload["K"] = 30
+        with patch.object(api, "reverse_geocode", return_value={"district": "Hyderabad", "state": "Telangana"}), \
+             patch.object(api, "get_weather_by_coords", return_value={"ok": True, "temperature": 28, "humidity": 65, "weather_desc": "Clear", "data_quality": "live"}), \
+             patch.object(api, "get_forecast_by_coords", return_value={"ok": True, "forecast": [], "advisory": []}), \
+             patch.object(api, "get_soil_by_coords", return_value={"ok": True, "N": 0, "P": 40, "K": 30, "ph": 6.5, "moisture_pct": 40, "data_quality": "user_entered"}):
+            response = self.client.post("/api/farm/analyze", json=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        fert = data.get("fertilizer_recommendation", {})
+        deficiencies = fert.get("nutrient_deficiency_summary", [])
+        # Nitrogen=0 must be flagged as low
+        n_def = [d for d in deficiencies if d.get("nutrient") == "Nitrogen (N)"]
+        self.assertTrue(len(n_def) > 0, "Nitrogen=0 must trigger a deficiency flag")
+        self.assertEqual(n_def[0].get("level"), "low")
+
+    def test_potassium_one_triggers_deficiency_flag(self):
+        payload = dict(self.base_payload)
+        payload["N"] = 50
+        payload["P"] = 40
+        payload["K"] = 1
+        with patch.object(api, "reverse_geocode", return_value={"district": "Hyderabad", "state": "Telangana"}), \
+             patch.object(api, "get_weather_by_coords", return_value={"ok": True, "temperature": 28, "humidity": 65, "weather_desc": "Clear", "data_quality": "live"}), \
+             patch.object(api, "get_forecast_by_coords", return_value={"ok": True, "forecast": [], "advisory": []}), \
+             patch.object(api, "get_soil_by_coords", return_value={"ok": True, "N": 50, "P": 40, "K": 1, "ph": 6.5, "moisture_pct": 40, "data_quality": "user_entered"}):
+            response = self.client.post("/api/farm/analyze", json=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        fert = data.get("fertilizer_recommendation", {})
+        deficiencies = fert.get("nutrient_deficiency_summary", [])
+        # Potassium=1 must be flagged as low
+        k_def = [d for d in deficiencies if d.get("nutrient") == "Potassium (K)"]
+        self.assertTrue(len(k_def) > 0, "Potassium=1 must trigger a deficiency flag")
+        self.assertEqual(k_def[0].get("level"), "low")
+
+    def test_soil_data_quality_marked_estimated_for_user_entered(self):
+        """User-entered soil values must be marked as estimated, not live."""
+        payload = dict(self.base_payload)
+        payload["N"] = 90
+        payload["P"] = 42
+        payload["K"] = 43
+        with patch.object(api, "reverse_geocode", return_value={"district": "Hyderabad", "state": "Telangana"}), \
+             patch.object(api, "get_weather_by_coords", return_value={"ok": True, "temperature": 28, "humidity": 65, "weather_desc": "Clear", "data_quality": "live"}), \
+             patch.object(api, "get_forecast_by_coords", return_value={"ok": True, "forecast": [], "advisory": []}), \
+             patch.object(api, "get_soil_by_coords", return_value={"ok": True, "N": 90, "P": 42, "K": 43, "ph": 6.5, "moisture_pct": 40, "data_quality": "user_entered"}):
+            response = self.client.post("/api/farm/analyze", json=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        crop_rec = data.get("crop_recommendation", {})
+        self.assertEqual(crop_rec.get("data_quality"), "estimated")
+        self.assertIn("modeled or farmer-entered", crop_rec.get("data_quality_note", ""))
+
+
+class TestProfitCalculationIllustrativeRegression(unittest.TestCase):
+    """Regression tests: profit calculation uses illustrative base yield, not soil-adjusted values."""
+
+    def setUp(self):
+        self.client = api.app.test_client()
+        self.base_payload = {
+            "latitude": 17.4,
+            "longitude": 78.5,
+            "area_acres": 1.0,
+            "season": "Kharif",
+            "region": "Telangana",
+            "soil_type": "Loamy",
+            "soil_ph": 6.5,
+            "soil_moisture": 40,
+            "organic_carbon": 0.8,
+            "irrigation": "Canal",
+            "previous_crop": "Wheat",
+            "previous_fertilizer": "Moderate",
+            "yield_last": 3000.0,
+        }
+
+    def test_profit_independent_of_nitrogen_level(self):
+        """Net profit estimate must not change when soil nitrogen changes (illustrative calc)."""
+        payload_low_n = dict(self.base_payload)
+        payload_low_n["N"] = 0
+        payload_low_n["P"] = 40
+        payload_low_n["K"] = 30
+
+        payload_high_n = dict(self.base_payload)
+        payload_high_n["N"] = 100
+        payload_high_n["P"] = 40
+        payload_high_n["K"] = 30
+
+        with patch.object(api, "reverse_geocode", return_value={"district": "Hyderabad", "state": "Telangana"}), \
+             patch.object(api, "get_weather_by_coords", return_value={"ok": True, "temperature": 28, "humidity": 65, "weather_desc": "Clear", "data_quality": "live"}), \
+             patch.object(api, "get_forecast_by_coords", return_value={"ok": True, "forecast": [], "advisory": []}), \
+             patch.object(api, "get_soil_by_coords", return_value={"ok": True, "N": 90, "P": 42, "K": 43, "ph": 6.5, "moisture_pct": 40, "data_quality": "user_entered"}):
+            resp_low = self.client.post("/api/farm/analyze", json=payload_low_n)
+            resp_high = self.client.post("/api/farm/analyze", json=payload_high_n)
+
+        self.assertEqual(resp_low.status_code, 200)
+        self.assertEqual(resp_high.status_code, 200)
+        data_low = resp_low.get_json()
+        data_high = resp_high.get_json()
+        # Top crop profit estimate must be identical (same crop, same base_yield, same area)
+        profit_low = data_low["crop_recommendation"]["top_3"][0]["net_profit_estimated"]
+        profit_high = data_high["crop_recommendation"]["top_3"][0]["net_profit_estimated"]
+        self.assertEqual(profit_low, profit_high, "Profit estimate must not vary with soil nitrogen (illustrative calc)")
 
 
 if __name__ == "__main__":
