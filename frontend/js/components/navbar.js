@@ -11,6 +11,7 @@ export function renderNavbar(activePage, routes) {
   if (!navEl) return;
 
   currentLang = getLang();
+  navEl.setAttribute('aria-label', currentLang === 'te' ? 'ప్రధాన నావిగేషన్' : 'Main navigation');
 
   // Use i18n for labels
   const labelMap = {
@@ -27,25 +28,34 @@ export function renderNavbar(activePage, routes) {
   const navLinks = Object.entries(routes)
     .filter(([key]) => ['home', 'analysis', 'weather', 'market', 'cropDoctor', 'chatbot', 'alerts', 'experts'].includes(key))
     .map(([key, r]) => `
-      <button class="nav-link ${activePage === key ? 'active' : ''}" data-navigate="${key}" id="nav-${key}">
+      <button class="nav-link ${activePage === key ? 'active' : ''}" data-navigate="${key}" id="nav-${key}" type="button" aria-current="${activePage === key ? 'page' : 'false'}" aria-label="${labelMap[key] || r.label}" title="${labelMap[key] || r.label}">
         ${r.icon} <span class="hide-mobile">${labelMap[key] || r.label}</span>
       </button>
     `).join('');
 
   navEl.innerHTML = `
     <div class="nav-inner">
-      <div class="nav-logo" data-navigate="home" title="AGRIFY Home">
+      <button class="nav-logo" data-navigate="home" type="button" title="AGRIFY Home" aria-label="AGRIFY Home">
         <div class="nav-logo-icon">🌾</div>
         <div class="nav-logo-text-group">
           <div class="nav-logo-text">AGRI<span>FY</span></div>
           <span class="nav-logo-tag">AI</span>
         </div>
-      </div>
-      <div class="nav-links">
+      </button>
+      <div class="nav-links" aria-label="${currentLang === 'te' ? 'ప్రధాన నావిగేషన్' : 'Main navigation'}">
         ${navLinks}
-        <button class="nav-lang-btn" id="nav-lang-btn" title="Switch Language">
-          ${currentLang === 'en' ? '🇮🇳 తె' : '🇺🇸 EN'}
+        <button class="nav-lang-btn" id="nav-lang-btn" type="button" title="${currentLang === 'te' ? 'భాష మార్చండి' : 'Switch language'}" aria-label="${currentLang === 'te' ? 'Switch language to English' : 'భాషను తెలుగుకు మార్చండి'}">
+          ${currentLang === 'en' ? 'తె' : 'EN'}
         </button>
+        <label class="theme-control" for="nav-theme-select">
+          <span aria-hidden="true">◐</span>
+          <span class="sr-only">${currentLang === 'te' ? 'రంగు థీమ్' : 'Color theme'}</span>
+          <select id="nav-theme-select" aria-label="${currentLang === 'te' ? 'రంగు థీమ్ ఎంచుకోండి' : 'Choose color theme'}">
+            <option value="system">${currentLang === 'te' ? 'సిస్టమ్' : 'System'}</option>
+            <option value="light">${currentLang === 'te' ? 'లైట్' : 'Light'}</option>
+            <option value="dark">${currentLang === 'te' ? 'డార్క్' : 'Dark'}</option>
+          </select>
+        </label>
       </div>
     </div>
   `;
@@ -63,6 +73,14 @@ export function renderNavbar(activePage, routes) {
     window.dispatchEvent(new CustomEvent('langChange', { detail: currentLang }));
     renderNavbar(activePage, routes);
   });
+
+  const themeSelect = navEl.querySelector('#nav-theme-select');
+  if (themeSelect) {
+    themeSelect.value = document.documentElement.dataset.themePreference || 'system';
+    themeSelect.addEventListener('change', () => {
+      window.dispatchEvent(new CustomEvent('themeChange', { detail: themeSelect.value }));
+    });
+  }
 }
 
 // Mobile bottom nav
@@ -74,6 +92,7 @@ export function renderMobileNav(activePage, routes) {
     mobileNavEl.className = 'mobile-nav';
     document.body.appendChild(mobileNavEl);
   }
+  mobileNavEl.setAttribute('aria-label', getLang() === 'te' ? 'మొబైల్ పేజీ నావిగేషన్' : 'Mobile page navigation');
 
   const labelMap = {
     home: t('nav_home'),
@@ -86,12 +105,12 @@ export function renderMobileNav(activePage, routes) {
     experts: t('nav_experts'),
   };
 
-  const visiblePages = ['home', 'analysis', 'weather', 'market', 'alerts'];
+  const visiblePages = ['home', 'analysis', 'weather', 'market', 'cropDoctor', 'chatbot', 'alerts', 'experts'];
   mobileNavEl.innerHTML = visiblePages.map(key => {
     const r = routes[key];
     if (!r) return '';
     return `
-      <button class="mobile-nav-item ${activePage === key ? 'active' : ''}" data-navigate="${key}">
+      <button class="mobile-nav-item ${activePage === key ? 'active' : ''}" data-navigate="${key}" type="button" aria-current="${activePage === key ? 'page' : 'false'}" aria-label="${labelMap[key] || r.label}">
         <span class="mn-icon">${r.icon}</span>
         <span class="mn-label">${labelMap[key] || r.label}</span>
       </button>

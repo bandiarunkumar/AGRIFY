@@ -77,6 +77,63 @@ const DISEASE_TREATMENT_DB = {
   },
 };
 
+// ---- Unsupported-image messaging (English / Telugu) ----------------------
+// The backend screens an upload before inference and can reject it for
+// several reasons (not a leaf, blank/flat frame, too small, bad shape,
+// low model confidence). Each reason gets an actionable, localized reply.
+const CD_REJECTION_TEXT = {
+  en: {
+    not_foliage: {
+      title: 'Unsupported Image',
+      body: 'This does not appear to be a potato leaf photo. Crop Doctor screens potato leaves only (early blight, late blight, healthy). Please upload a clear photo of a single potato leaf in natural daylight.',
+    },
+    low_quality: {
+      title: 'Image Quality Too Low',
+      body: 'This image looks blank or has too little detail to screen. Please upload a sharp, well-lit photo of a single potato leaf.',
+    },
+    low_resolution: {
+      title: 'Image Too Small',
+      body: 'This image is too small to screen reliably. Please upload a larger photo of a single potato leaf.',
+    },
+    bad_aspect_ratio: {
+      title: 'Unsupported Image Shape',
+      body: 'This image shape is not suitable for leaf screening. Please upload a square-ish photo of a single potato leaf.',
+    },
+    low_confidence: {
+      title: 'No Supported Crop Match Found',
+      body: 'The uploaded image was not recognized as a supported crop leaf (potato, etc.). Please ensure the photo clearly captures a single crop leaf in natural lighting.',
+    },
+  },
+  te: {
+    not_foliage: {
+      title: 'మద్దతు కానిత చిత్రం',
+      body: 'ఇది బంగాళాదుంప ఆకు చిత్రంగా కనిపించడం లేదు. పంట వైద్యుడు బంగాళాదుంప ఆకులను మాత్రమే పరిశీలిస్తాడు (ముందస్తు తెగులు, ముదిరిన ఆకుమాడు తెగులు, ఆరోగ్యకరమైనది). దయచేసి సహజమైన వెలుతురులో స్పష్టంగా ఉన్న ఒక బంగాళాదుంప ఆకు ఫోటోను అప్‌లోడ్ చేయండి.',
+    },
+    low_quality: {
+      title: 'చిత్ర నాణ్యత చాలా తక్కువ',
+      body: 'ఈ చిత్రం ఖాళీగా ఉంది లేదా పరిశీలించడానికి తగిన వివరాలు లేవు. దయచేసి స్పష్టంగా, బాగా వెలుతురు పడిన ఒక బంగాళాదుంప ఆకు ఫోటోను అప్‌లోడ్ చేయండి.',
+    },
+    low_resolution: {
+      title: 'చిత్రం చాలా చిన్నది',
+      body: 'ఈ చిత్రం పరిశీలించడానికి చాలా చిన్నది. దయచేసి పెద్ద బంగాళాదుంప ఆకు ఫోటోను అప్‌లోడ్ చేయండి.',
+    },
+    bad_aspect_ratio: {
+      title: 'మద్దతు కానిత చిత్ర ఆకారం',
+      body: 'ఈ చిత్ర ఆకారం ఆకు పరిశీలింపుకు సరైనది కాదు. దయచేసి గోటాకారంలో ఉన్న ఒక బంగాళాదుంప ఆకు ఫోటోను అప్‌లోడ్ చేయండి.',
+    },
+    low_confidence: {
+      title: 'మద్దతైన పంట సరికొలకను కనుగొనబడలేదు',
+      body: 'అప్‌లోడ్ చేసిన చిత్రాన్ని మద్దతైన పంట ఆకుగా (బంగాళాదుంప మొదలైనవి) గుర్తించలేకపోయాము. దయచేసి సహజమైన వెలుతురులో స్పష్టంగా ఉన్న ఒక పంట ఆకును తీసుకునే ఫోటోను అప్‌లోడ్ చేయండి.',
+    },
+  },
+};
+
+function cdRejectionCopy(reason) {
+  const lang = getLang() === 'te' ? 'te' : 'en';
+  const table = CD_REJECTION_TEXT[lang] || CD_REJECTION_TEXT.en;
+  return table[reason] || table.low_confidence;
+}
+
 export function renderCropDoctor() {
   return `
     <div class="page-section crop-doctor-page">
@@ -366,12 +423,14 @@ export function initCropDoctor() {
     if (!card || !data) return;
 
     if (data.is_recognized === false) {
+      const reason = data.reason || 'low_confidence';
+      const copy = cdRejectionCopy(reason);
       card.innerHTML = `
         <div class="card cd-unrecognized-card" style="text-align:center;padding:var(--sp-2xl);margin-bottom:var(--sp-xl);">
           <div style="font-size:3.5rem;margin-bottom:var(--sp-md);">🤷</div>
-          <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:var(--c-text);margin-bottom:8px;">No Supported Crop Match Found</div>
+          <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:var(--c-text);margin-bottom:8px;">${copy.title}</div>
           <p style="color:var(--c-text-secondary);font-size:0.95rem;max-width:440px;margin:0 auto var(--sp-lg);line-height:1.6;">
-            The uploaded image was not recognized as a supported crop leaf (potato, etc.). Please ensure the photo clearly captures a single crop leaf in natural lighting.
+            ${copy.body}
           </p>
           <button class="btn btn-secondary btn-lg" id="cd-scan-again">🔄 Try Again</button>
         </div>

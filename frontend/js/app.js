@@ -3,7 +3,9 @@
 // ============================================================
 
 import '../css/style.css';
-import { renderNavbar } from './components/navbar.js';
+import '../css/premium.css';
+import { initTheme } from './theme.js';
+import { renderNavbar, renderMobileNav } from './components/navbar.js';
 import { renderFooter } from './components/footer.js';
 import { renderHome, initHome } from './pages/home.js';
 import { renderWeather, initWeather } from './pages/weather.js';
@@ -31,6 +33,7 @@ const routes = {
 };
 
 let currentPage = 'home';
+let homeCtaObserver = null;
 
 // ============================================================
 // NAVIGATE
@@ -39,11 +42,32 @@ function navigateTo(page) {
   const route = routes[page];
   if (!route) return;
 
+  homeCtaObserver?.disconnect();
+  homeCtaObserver = null;
+
   currentPage = page;
   renderNavbar(page, routes);
+  renderMobileNav(page, routes);
 
   const app = document.getElementById('app');
   app.innerHTML = route.render();
+
+  // Keep route content visible immediately while adding a small, transform-only entrance.
+  const pageRoot = app.firstElementChild;
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (pageRoot && !reduceMotion) pageRoot.classList.add('agrify-page-enter');
+
+  // Stagger only the first few visual cards; never stage urgent alert content.
+  if (!reduceMotion && page !== 'alerts') {
+    const revealCards = app.querySelectorAll(
+      '.card, .stat-card, .chart-container, .feature-card, .expert-card, .forecast-card, .crop-rec-card, .action-item-card, .timeline-step-card'
+    );
+    revealCards.forEach((card, index) => {
+      if (index >= 5 || card.matches('.alerts-card-enhanced, .analysis-error-card, .wx-error-card, .cd-diagnosis-hero')) return;
+      card.classList.add('agrify-card-reveal');
+      card.style.setProperty('--agrify-reveal-delay', `${index * 38}ms`);
+    });
+  }
 
   if (route.init) route.init();
 
@@ -53,12 +77,32 @@ function navigateTo(page) {
       e.preventDefault();
       navigateTo(el.dataset.navigate);
     });
+
+    if (!el.matches('a, button, input, select, textarea') && !el.hasAttribute('tabindex')) {
+      el.tabIndex = 0;
+      el.setAttribute('role', 'link');
+      el.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        navigateTo(el.dataset.navigate);
+      });
+    }
   });
 
-  // Voice FAB only on analysis pages
+  // Global Voice Copilot FAB accessible across all pages (Home, Analysis, Weather, Market, Crop Doctor, Alerts, Experts)
   const fab = document.getElementById('voice-fab');
   if (fab) {
-    fab.classList.toggle('hidden', page === 'home');
+    fab.classList.remove('hidden');
+    fab.classList.remove('home-cta-visible');
+    if (page === 'home' && window.matchMedia('(max-width: 760px)').matches && window.IntersectionObserver) {
+      const heroActions = app.querySelector('.hero-ctas');
+      if (heroActions) {
+        homeCtaObserver = new IntersectionObserver(([entry]) => {
+          fab.classList.toggle('home-cta-visible', Boolean(entry?.isIntersecting));
+        }, { threshold: 0.05 });
+        homeCtaObserver.observe(heroActions);
+      }
+    }
   }
 
   // Re-render footer to update language
@@ -71,9 +115,9 @@ function navigateTo(page) {
 // INIT
 // ============================================================
 function init() {
-  // Spawn global floating flower petals (persists across all pages)
-  spawnGlobalFlowerPetals();
-
+  initTheme();
+  syncVisibleViewportHeight();
+  window.visualViewport?.addEventListener('resize', syncVisibleViewportHeight, { passive: true });
   renderFooter();
   initVoice();
 
@@ -91,35 +135,11 @@ function init() {
   });
 }
 
-// ============================================================
-// GLOBAL FLOATING FLOWER PETALS — Always visible on all pages
-// ============================================================
-function spawnGlobalFlowerPetals() {
-  // Don't duplicate if already spawned
-  if (document.getElementById('global-petals')) return;
-
-  const container = document.createElement('div');
-  container.id = 'global-petals';
-  container.className = 'flower-petals-container';
-  document.body.appendChild(container);
-
-  const petals = ['🌸', '🌺', '🌻', '🌼', '🌷', '🍃', '🌿', '☘️', '🍂', '🌾'];
-  const count = 30;
-
-  for (let i = 0; i < count; i++) {
-    const petal = document.createElement('div');
-    petal.className = 'floating-petal';
-    petal.textContent = petals[Math.floor(Math.random() * petals.length)];
-    petal.style.left = `${Math.random() * 100}%`;
-    petal.style.setProperty('--fall-duration', `${14 + Math.random() * 20}s`);
-    petal.style.setProperty('--fall-delay', `${Math.random() * 18}s`);
-    petal.style.setProperty('--drift-x', `${-60 + Math.random() * 120}px`);
-    petal.style.setProperty('--petal-size', `${0.9 + Math.random() * 1.1}rem`);
-    petal.style.setProperty('--petal-opacity', `${0.18 + Math.random() * 0.22}`);
-    petal.style.setProperty('--spin', `${Math.random() > 0.5 ? '' : '-'}${400 + Math.random() * 400}deg`);
-    petal.style.fontSize = `var(--petal-size)`;
-    container.appendChild(petal);
-  }
+function syncVisibleViewportHeight() {
+  const layoutHeight = window.innerHeight;
+  const visibleHeight = window.visualViewport?.height || layoutHeight;
+  const viewportGap = Math.max(0, layoutHeight - visibleHeight);
+  document.documentElement.style.setProperty('--agrify-visible-viewport-gap', `${viewportGap}px`);
 }
 
 document.addEventListener('DOMContentLoaded', init);
