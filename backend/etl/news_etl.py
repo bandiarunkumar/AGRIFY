@@ -14,9 +14,7 @@ import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
-from dotenv import load_dotenv
-
-load_dotenv()
+import config_loader
 
 NEWSAPI_KEY = os.getenv('NEWSAPI_KEY', '').strip()
 NEWSAPI_BASE = "https://newsapi.org/v2/everything"

@@ -15,6 +15,8 @@ import { renderCropDoctor, initCropDoctor } from './pages/cropDoctor.js';
 import { renderChatbot, initChatbot } from './pages/chatbot.js';
 import { renderAlerts, initAlerts } from './pages/alerts.js';
 import { renderExperts, initExperts } from './pages/experts.js';
+import { renderAuth, initAuth } from './pages/auth.js';
+import { me, logout, getUser } from './auth.js';
 import { initVoice } from './voice.js';
 import { onLangChange } from './i18n.js';
 
@@ -30,6 +32,7 @@ const routes = {
   chatbot:   { render: renderChatbot,   init: initChatbot,  label: 'Chatbot',  icon: '💬' },
   alerts:    { render: renderAlerts,    init: initAlerts,   label: 'Alerts',   icon: '🚨' },
   experts:   { render: renderExperts,   init: initExperts,  label: 'Experts',  icon: '👨‍🌾' },
+  auth:     { render: renderAuth,     init: initAuth,     label: 'Account',  icon: '👤' },
 };
 
 let currentPage = 'home';

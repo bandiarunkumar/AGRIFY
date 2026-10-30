@@ -56,6 +56,7 @@ export function renderNavbar(activePage, routes) {
             <option value="dark">${currentLang === 'te' ? 'డార్క్' : 'Dark'}</option>
           </select>
         </label>
+        <button class="nav-auth-btn" id="nav-auth-btn" type="button">${(localStorage.getItem('agrify_user') ? JSON.parse(localStorage.getItem('agrify_user')).full_name.split(' ')[0] : (currentLang === 'te' ? 'లాగిన్' : 'Login'))}</button>
       </div>
     </div>
   `;
@@ -68,9 +69,20 @@ export function renderNavbar(activePage, routes) {
     });
   });
 
-  navEl.querySelector('#nav-lang-btn')?.addEventListener('click', () => {
-    currentLang = currentLang === 'en' ? 'te' : 'en';
-    window.dispatchEvent(new CustomEvent('langChange', { detail: currentLang }));
+  navEl.querySelector('#nav-auth-btn')?.addEventListener('click', () => {
+    const user = JSON.parse(localStorage.getItem('agrify_user') || 'null');
+    if (user) {
+      import('../auth.js').then(m => m.logout()).then(() => {
+        window.dispatchEvent(new CustomEvent('authChange'));
+        window.dispatchEvent(new CustomEvent('navigate', { detail: 'home' }));
+        renderNavbar(activePage, routes);
+      });
+    } else {
+      window.dispatchEvent(new CustomEvent('navigate', { detail: 'auth' }));
+    }
+  });
+
+  window.addEventListener('authChange', () => {
     renderNavbar(activePage, routes);
   });
 

@@ -7917,3 +7917,27 @@ input[type=number] { -moz-appearance: textfield; }
   }
 }
 
+
+/* Auth */
+.auth-page { display:flex; align-items:center; justify-content:center; min-height:calc(100vh - 160px); padding:24px; }
+.auth-card { width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-lg); padding:32px; }
+.auth-header { text-align:center; margin-bottom:20px; }
+.auth-header .nav-logo-icon { margin:0 auto 10px; font-size:28px; }
+.auth-header h1 { margin:0; font-size:28px; letter-spacing:4px; }
+.auth-header h1 span { color:var(--primary); }
+.auth-subtitle { color:var(--text-secondary); margin-top:6px; }
+.auth-tabs { display:flex; gap:8px; margin-bottom:18px; background:var(--bg-secondary); padding:4px; border-radius:12px; }
+.auth-tab { flex:1; padding:10px; border:none; background:transparent; color:var(--text-secondary); border-radius:10px; cursor:pointer; font-weight:600; }
+.auth-tab.active { background:var(--surface); color:var(--text-primary); box-shadow:var(--shadow-sm); }
+.auth-form { display:flex; flex-direction:column; gap:14px; }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-group label { font-size:13px; color:var(--text-secondary); font-weight:500; }
+.form-group input { padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text-primary); font-size:14px; }
+.auth-error { background:rgba(239,68,68,0.1); color:#ef4444; padding:10px 12px; border-radius:10px; font-size:13px; }
+.auth-submit { padding:12px; border:none; border-radius:12px; background:linear-gradient(135deg, var(--primary), var(--primary-600)); color:white; font-weight:600; cursor:pointer; }
+.auth-submit:hover { filter:brightness(1.05); }
+.auth-user { display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-size:13px; }
+.auth-user button { background:transparent; border:1px solid var(--border); color:var(--text-primary); padding:6px 10px; border-radius:8px; cursor:pointer; }
+
+.nav-auth-btn { padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text-primary); cursor:pointer; font-weight:500; }
+.nav-auth-btn:hover { background:var(--bg-secondary); }

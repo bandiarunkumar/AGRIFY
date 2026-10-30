@@ -3,9 +3,7 @@ Smart Farmer System — Configuration
 """
 
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
+import config_loader
 
 # ============================================
 # API KEY

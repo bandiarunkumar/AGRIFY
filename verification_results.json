@@ -1,0 +1,121 @@
+{
+  "location": {
+    "coords_test": {
+      "loc_resolved": true
+    },
+    "city_test": {
+      "city_resolved": false
+    },
+    "no_loc_test": {
+      "safe_fallback": true
+    }
+  },
+  "market": {
+    "status": "success",
+    "intent": "market",
+    "spoken": "Today's mandi price for Chilli: average \u20b9172/kg, ranging from \u20b9157 to \u20b9189/kg across 4 markets. Best price at Guntur.",
+    "card": {
+      "action_pill": {
+        "action": "navigate_market",
+        "label": "Explore All Mandi Rates"
+      },
+      "category": "Market Intelligence",
+      "key_points": [
+        "\ud83d\udcca Average: \u20b9172/kg",
+        "\ud83d\udcc8 Range: \u20b9157 \u2013 \u20b9189/kg",
+        "\ud83c\udfc6 Best market: Guntur",
+        "\ud83c\udfea 4 markets reporting \u2014 Agmarknet data.gov.in"
+      ],
+      "title": "Chilli \u2014 Mandi Prices Today"
+    },
+    "disclaimer": "Source: Agmarknet (data.gov.in). Advisory guidance based on verified AGRIFY agricultural models. Verify critical field applications with your local KVK extension officer."
+  },
+  "fertilizer_safety": {
+    "adv1_accepted_invented": false,
+    "adv2_has_pesticide_dose": false,
+    "adv3_has_guarantee": false,
+    "spoken_adv2": "The symptoms you described on rice may be consistent with early stress, foliar blight, or nutrient deficiency. Upload a clear leaf photo in Crop Doctor for AI visual analysis. Physical confirmation by your local agriculture officer is recommended before any treatment.",
+    "spoken_adv3": "Your farm in Your Field does not have a verified fertilizer dosage in active analysis. Please verify with your local agricultural extension officer or KVK before applying chemical fertilizers."
+  },
+  "weather_hallucination": {
+    "has_celsius": false,
+    "spoken": "For location-specific answers, please run the Farm Analyzer with your GPS location, or check the Weather tab for current forecasts."
+  },
+  "client_trust": {
+    "spoken": "Current weather in Your Field: 99\u00b0C, humidity \u2014%, .",
+    "trust_note_in_disclaimer": true,
+    "status": "success"
+  },
+  "alerts": {
+    "intent": "alerts",
+    "spoken": "For location-specific answers, please run the Farm Analyzer with your GPS location, or check the Weather tab for current forecasts.",
+    "card": {
+      "action_pill": {
+        "action": "navigate_alerts",
+        "label": "Open Alert Center"
+      },
+      "category": "Farm Protection",
+      "key_points": [
+        "No active danger or warning alerts",
+        "All parameters normal for chilli"
+      ],
+      "title": "Active Farm Alerts"
+    }
+  },
+  "irrigation": {
+    "intent": "irrigation",
+    "spoken": "Irrigation guidance for rice in Your Field: Irrigate in early morning Using Drip method, net requirement is 3.5 mm/day.",
+    "has_3_5": true,
+    "has_drip": true
+  },
+  "crop": {
+    "intent": "crop",
+    "spoken": "For Kharif season in Guntur, Andhra Pradesh, AGRIFY recommends Rice as the top crop. Verify with your local KVK for certified high-yield varieties.",
+    "card": {
+      "action_pill": {
+        "action": "navigate_analysis",
+        "label": "Full Crop Analysis"
+      },
+      "category": "Crop Advisory",
+      "key_points": [
+        "\ud83c\udf31 Top pick: Rice",
+        "\ud83d\udcc5 Season: Kharif | Region: Guntur, Andhra Pradesh"
+      ],
+      "title": "Crop Suitability \u2014 Kharif Season"
+    }
+  },
+  "multilingual": {
+    "en": {
+      "intent": "market",
+      "language": "en",
+      "spoken": "Today's mandi price for Chilli: average \u20b9172/kg, ranging from \u20b9157 to \u20b9189/kg across 4 markets. Best price at Guntur.",
+      "card_title": "Chilli \u2014 Mandi Prices Today"
+    },
+    "te": {
+      "intent": "market",
+      "language": "te",
+      "spoken": "Rice \u0c28\u0c47\u0c1f\u0c3f \u0c2e\u0c02\u0c21\u0c3f \u0c27\u0c30: \u0c38\u0c17\u0c1f\u0c41 \u20b925/\u0c15\u0c3f\u0c32\u0c4b, \u20b923 \u0c28\u0c41\u0c02\u0c21\u0c3f \u20b927 \u0c35\u0c30\u0c15\u0c41 4 \u0c2e\u0c02\u0c21\u0c40\u0c32\u0c32\u0c4b. \u0c05\u0c24\u0c4d\u0c2f\u0c41\u0c24\u0c4d\u0c24\u0c2e \u0c27\u0c30: Sattenapalli.",
+      "card_title": "Rice \u2014 Mandi Prices Today"
+    },
+    "hi": {
+      "intent": "market",
+      "language": "hi",
+      "spoken": "Rice \u0915\u093e \u0906\u091c \u0915\u093e \u092e\u0902\u0921\u0940 \u092d\u093e\u0935: \u0914\u0938\u0924 \u20b925/kg, \u20b923 \u0938\u0947 \u20b927/kg \u2014 4 \u092e\u0902\u0921\u093f\u092f\u094b\u0902 \u092e\u0947\u0902\u0964 \u0938\u092c\u0938\u0947 \u0905\u091a\u094d\u091b\u093e \u092d\u093e\u0935: Sattenapalli\u0964",
+      "card_title": "Rice \u2014 Mandi Prices Today"
+    }
+  },
+  "endpoints": {
+    "/api/health": 200,
+    "/api/chat": 200,
+    "/api/assistant/query": 200,
+    "/api/farm/action-plan": 200
+  },
+  "performance": {
+    "tool_weather": 68,
+    "tool_soil": 4369,
+    "tool_alerts": 0,
+    "tool_crop": 0,
+    "tool_fertilizer": 0,
+    "total_wall_ms": 4403
+  }
+}

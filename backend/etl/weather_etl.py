@@ -7,9 +7,7 @@ RULE: Always fetch by latitude/longitude, never by city name
 import os
 import requests
 from datetime import datetime, timezone
-from dotenv import load_dotenv
-
-load_dotenv()
+import config_loader
 
 OWM_KEY = os.getenv('OPENWEATHERMAP_API_KEY', '').strip()
 BASE_URL_CURRENT = "https://api.openweathermap.org/data/2.5/weather"
